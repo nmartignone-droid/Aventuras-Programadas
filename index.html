@@ -1,0 +1,2038 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Juego primer ciclo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<style>
+/* Escenario 16:9 centrado sobre un cielo violeta con estrellitas; título y botones encima del fondo animado */
+:root {
+  --cielo: #4a1e73;
+  --cielo-luz: #6b3a99;
+  --violeta-osc: #43206f;
+  --violeta: #7a3fc6;
+  --teal: #2ba58a;
+  --teal-osc: #1d7a66;
+  --naranja: #ec5a2e;
+  --naranja-osc: #b8401c;
+  --blanco: #ffffff;
+  --display: "Fredoka", "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  background: var(--cielo);
+  color: var(--blanco);
+  font-family: var(--display);
+  overflow: hidden;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+}
+#estrellas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+
+.escenario {
+  position: relative; z-index: 1;
+  width: min(100%, calc((100vh - 32px) * 1.7486));
+  aspect-ratio: 1280 / 732;
+  max-width: 100%;
+  background: #f7f8fb url("portada/web/fondo-poster.jpg") center / cover no-repeat;
+  overflow: hidden;
+  container-type: inline-size;
+  box-shadow: 0 1.5cqw 5cqw rgba(20, 5, 40, .45);
+}
+.escenario video.fondo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+.titulo {
+  position: absolute; left: 0; right: 0; top: 5.5cqw; margin: 0;
+  text-align: center; font-weight: 700; letter-spacing: .02em;
+  font-size: 6.6cqw; line-height: 1; text-wrap: balance;
+  -webkit-text-stroke: .5cqw var(--blanco); paint-order: stroke fill;
+  filter: drop-shadow(0 .5cqw .35cqw rgba(67, 32, 111, .35));
+  animation: entrar .9s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.titulo .a { color: var(--violeta-osc); }
+.titulo .b { color: var(--violeta); }
+.chispa { position: absolute; top: 2.6cqw; left: 54.5%; width: 1.6cqw; height: 1.6cqw; color: #f2c230; animation: brillo 2.4s ease-in-out infinite; }
+
+.botones {
+  position: absolute; left: 0; right: 0; bottom: 4.2cqw;
+  display: flex; justify-content: center; gap: 3.2cqw;
+}
+.btn {
+  font: 600 2.3cqw/1 var(--display); text-transform: uppercase; letter-spacing: .03em;
+  color: var(--blanco); border: .35cqw solid var(--blanco); border-radius: 99px;
+  padding: 1.3cqw 3cqw; cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease;
+  animation: entrar .9s .25s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.btn-teal { background: var(--teal); box-shadow: 0 .45cqw 0 var(--teal-osc); }
+.btn-naranja { background: var(--naranja); box-shadow: 0 .45cqw 0 var(--naranja-osc); }
+.btn:hover { transform: translateY(-.25cqw) scale(1.04); }
+.btn:active { transform: translateY(.3cqw); box-shadow: 0 .15cqw 0 rgba(0,0,0,.25); }
+.btn:focus-visible, .sonido:focus-visible, .cerrar:focus-visible { outline: 3px solid #f2c230; outline-offset: 3px; }
+
+.sonido {
+  position: fixed; z-index: 5;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  right: calc(14px + env(safe-area-inset-right, 0px));
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--violeta-osc); color: var(--blanco);
+  border: 2px solid rgba(255,255,255,.85); cursor: pointer;
+  display: grid; place-items: center;
+  box-shadow: 0 3px 10px rgba(0,0,0,.3);
+}
+.sonido svg { width: 26px; height: 26px; }
+.sonido .off { display: none; }
+.sonido[aria-pressed="true"] .on { display: none; }
+.sonido[aria-pressed="true"] .off { display: block; }
+.sonido.espera::after {
+  content: ""; position: absolute; inset: -6px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.7); animation: latido 1.6s ease-out infinite;
+}
+
+.capa {
+  position: fixed; inset: 0; z-index: 10;
+  background: rgba(30, 10, 55, .88);
+  display: grid; place-items: center;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 64px 24px;
+}
+.logo-pcia {
+  position: absolute; z-index: 4; left: 1.5cqw; top: 1cqw; width: 8cqw; aspect-ratio: 561 / 292;
+  pointer-events: none; transition: opacity 1.2s ease;
+}
+.logo-portada img { display: block; width: 100%; height: auto; filter: brightness(0) invert(14%) sepia(60%) saturate(2400%) hue-rotate(255deg); }
+.logo-portada { opacity: .25; }
+.logo-portada.destacado { opacity: 1; }
+.logo-video { opacity: .28; }
+.logo-video.destacado { opacity: 1; }
+.logo-video img { display: block; width: 100%; height: auto; filter: drop-shadow(0 .2cqw .3cqw rgba(0,0,0,.25)); }
+#capa-video { background: transparent; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); }
+body.viendo .escenario { visibility: hidden; }
+.presentacion-marco {
+  width: min(100%, calc((100vh - 32px) * 1.7778)); max-width: 100%;
+  container-type: inline-size;
+}
+.pantalla { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #000; box-shadow: 0 1.5cqw 5cqw rgba(20, 5, 40, .45); }
+.pantalla video { pointer-events: none; display: block; width: 100%; height: 100%; object-fit: cover; }
+.cartel {
+  position: absolute; z-index: 2; left: 2cqw; top: 6.5cqw; width: 47cqw; margin: 0;
+  pointer-events: none; opacity: 0; transform: translateY(-4cqw) rotate(-3deg);
+  transition: opacity .6s ease, transform .8s cubic-bezier(.2, 1.4, .4, 1);
+}
+.cartel img { display: block; width: 100%; height: auto; filter: drop-shadow(0 .6cqw .5cqw rgba(40, 20, 0, .3)); }
+.cartel .texto {
+  display: none; font-weight: 700; font-size: 5cqw; line-height: 1.05; text-align: center;
+  -webkit-text-stroke: .45cqw var(--blanco); paint-order: stroke fill; padding-top: 4cqw;
+}
+.cartel .texto .a { color: var(--violeta-osc); } .cartel .texto .b { color: var(--violeta); }
+.cartel.sin-imagen img { display: none; } .cartel.sin-imagen .texto { display: block; }
+.cartel.visible { opacity: 1; transform: none; }
+.final {
+  position: absolute; inset: 0; z-index: 3;
+  background: rgba(30, 10, 55, .45);
+  display: grid; place-items: center;
+}
+.final .btn { font-size: clamp(22px, 4cqw, 44px); padding: .55em 1.8em; border-width: 4px; animation: entrar .6s cubic-bezier(.2, 1.4, .4, 1) both; }
+.cerrar {
+  position: absolute; z-index: 3; right: 2cqw; bottom: 2cqw;
+  font: 600 clamp(13px, 1.7cqw, 18px)/1 var(--display); color: var(--blanco);
+  background: rgba(30, 10, 55, .6); border: 2px solid rgba(255,255,255,.85);
+  border-radius: 99px; padding: .7em 1.3em; cursor: pointer;
+  display: inline-flex; align-items: center; gap: .5em;
+}
+.cerrar:hover { background: rgba(30, 10, 55, .85); }
+.cerrar svg { width: 1.1em; height: 1.1em; }
+/* Mapa de misiones: franja arriba, grilla 4×3 sobre el fondo, franja abajo */
+.vista-mapa { background: #2a1450; display: grid; grid-template-rows: 9.5% 1fr 10%; }
+.vista-mapa .franja { position: relative; z-index: 2; background: #5b1f8a; display: flex; align-items: center; }
+.franja-arriba { justify-content: center; gap: 1.6cqw; }
+.franja-arriba h2 { margin: 0; font-size: 4.3cqw; font-weight: 700; letter-spacing: .03em; color: var(--blanco); }
+.franja-arriba svg { width: 3cqw; height: 3cqw; }
+.franja-arriba .progreso {
+  position: absolute; right: 2cqw; font-size: 1.6cqw; font-weight: 600;
+  background: rgba(255,255,255,.14); border-radius: 99px; padding: .5cqw 1.4cqw;
+}
+.vista-mapa .logo-mapa { position: absolute; left: 1.5cqw; top: 50%; transform: translateY(-50%); width: 6.5cqw; opacity: .35; }
+.vista-mapa .logo-mapa img { display: block; width: 100%; height: auto; }
+.mapa-medio { position: relative; overflow: hidden; display: grid; place-items: center; }
+.mapa-medio video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tarjetas {
+  position: relative; z-index: 1; width: 68cqw;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.4cqw 1.6cqw;
+}
+.tarjeta {
+  position: relative; display: block; padding: 0; border: 0; background: none; cursor: pointer;
+  border-radius: 2cqw; transition: transform .18s cubic-bezier(.2, 1.4, .4, 1), filter .18s ease;
+  animation: aparecer .5s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.tarjeta img { display: block; width: 100%; height: auto; filter: drop-shadow(0 .4cqw .5cqw rgba(30, 10, 55, .3)); }
+.tarjeta:hover, .tarjeta:focus-visible { transform: translateY(-.5cqw) scale(1.06); z-index: 2; }
+.tarjeta:focus-visible { outline: .35cqw solid #f2c230; outline-offset: .3cqw; }
+.tarjeta.siguiente::after {
+  content: ""; position: absolute; inset: -.5cqw; border-radius: 2.4cqw;
+  border: .4cqw solid #f2c230; animation: latido-tarjeta 1.6s ease-out infinite; pointer-events: none;
+}
+.tarjeta .sello {
+  position: absolute; right: -.6cqw; top: -.8cqw; width: 4.2cqw; height: 4.2cqw; border-radius: 50%;
+  background: var(--teal); border: .35cqw solid var(--blanco); color: var(--blanco);
+  display: none; place-items: center; box-shadow: 0 .3cqw .5cqw rgba(0,0,0,.25);
+}
+.tarjeta .sello svg { width: 60%; height: 60%; }
+.tarjeta.hecha .sello { display: grid; animation: entrar .5s cubic-bezier(.2, 1.4, .4, 1) both; }
+.franja-abajo { justify-content: space-between; padding: 0 2cqw; }
+.nav-mapa {
+  display: inline-flex; align-items: center; gap: .8cqw; background: none; border: 0; cursor: pointer;
+  color: var(--blanco); font: 700 1.7cqw/1 var(--display); letter-spacing: .04em; text-transform: uppercase;
+  padding: .6cqw 1cqw; border-radius: 99px; transition: background .15s ease;
+}
+.nav-mapa:hover { background: rgba(255,255,255,.14); }
+.nav-mapa:focus-visible { outline: 3px solid #f2c230; outline-offset: 2px; }
+.nav-mapa svg { width: 2.6cqw; height: 2.6cqw; }
+.nav-docentes { position: relative; padding-left: 7.6cqw; }
+.nav-docentes img { position: absolute; left: .4cqw; bottom: .3cqw; height: 6.4cqw; width: auto; filter: drop-shadow(0 .3cqw .4cqw rgba(0,0,0,.3)); transition: transform .2s cubic-bezier(.2, 1.4, .4, 1); transform-origin: bottom center; }
+.nav-docentes:hover img { transform: scale(1.08) rotate(-3deg); }
+.aviso {
+  position: absolute; z-index: 5; left: 50%; bottom: 12%; transform: translateX(-50%);
+  background: var(--blanco); color: var(--violeta-osc); font-size: 1.9cqw; font-weight: 600;
+  padding: 1cqw 2.4cqw; border-radius: 99px; box-shadow: 0 .6cqw 1.5cqw rgba(30,10,55,.35);
+  animation: entrar .4s cubic-bezier(.2, 1.4, .4, 1) both; white-space: nowrap;
+}
+/* ---------- Misión 1: Orden en la secuencia ---------- */
+.mision { background: #f9fafa; display: grid; grid-template-rows: 11% 1fr; grid-template-columns: 8.5% 1fr; }
+.mision .m-pag { grid-area: 1 / 1; width: 100%; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.4cqw; padding: 2cqw 0; }
+.m-cabeza {
+  grid-column: 1 / -1; background: #6a2a96; color: var(--blanco);
+  display: grid; place-content: center; justify-items: center; gap: .5cqw; padding-top: .4cqw; position: relative; z-index: 2;
+}
+/* En páginas con columna lateral, el encabezado se centra sobre el área de contenido */
+.mision:not(.es-menu) .m-cabeza { padding-left: 8.5%; }
+.m-pastilla {
+  margin: 0; background: var(--blanco); color: #6a2a96; border-radius: 99px;
+  font-size: 2.5cqw; font-weight: 700; padding: .25cqw 3.2cqw; letter-spacing: .02em; line-height: 1.15;
+}
+.m-indica { margin: 0; font-size: 1.25cqw; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; text-align: center; padding: 0 2cqw; }
+.m-indica em { font-style: italic; }
+.m-lado {
+  grid-row: 2; background: #6a2a96; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 2.4cqw; position: relative; z-index: 2; padding-bottom: 10.5cqw; box-sizing: border-box;
+}
+.m-lado button {
+  width: 100%; box-sizing: border-box; background: none; border: 0; color: var(--blanco); cursor: pointer; display: grid; justify-items: center; gap: .5cqw;
+  font: 700 1cqw/1 var(--display); letter-spacing: .04em; text-transform: uppercase; padding: .5cqw; border-radius: 1cqw;
+}
+.m-lado button:hover { background: rgba(255,255,255,.12); }
+.m-lado button:focus-visible { outline: 3px solid #f2c230; }
+.m-lado .ico { width: 3.6cqw; height: 3.6cqw; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.12); }
+.m-lado .ico svg { width: 60%; height: 60%; }
+.m-lado .ico { overflow: hidden; }
+.m-lado .ico img { width: 100%; height: 100%; object-fit: contain; }
+.m-lado .logo-lado { position: absolute; bottom: 1.2cqw; width: 6cqw; opacity: .45; }
+.m-cuerpo { grid-row: 2; grid-column: 2; position: relative; overflow: hidden; display: grid; }
+
+/* Menú de la misión (sin lateral, franja abajo como en Genially) */
+.mision.es-menu { grid-template-rows: 11% 1fr 7%; grid-template-columns: 1fr; }
+.mision.es-menu .m-lado { display: none; }
+.mision.es-menu .m-cuerpo { grid-column: 1; }
+.m-franja-abajo { display: none; grid-column: 1 / -1; background: #6a2a96; align-items: center; gap: 2cqw; padding: 0 2cqw; }
+.mision.es-menu .m-franja-abajo { display: flex; }
+.m-franja-abajo button { background: none; border: 0; color: var(--blanco); cursor: pointer; display: inline-flex; align-items: center; gap: .6cqw; font: 700 1.2cqw/1 var(--display); text-transform: uppercase; letter-spacing: .04em; padding: .5cqw .8cqw; border-radius: 99px; }
+.m-franja-abajo button:hover { background: rgba(255,255,255,.14); }
+.m-franja-abajo svg { width: 1.9cqw; height: 1.9cqw; }
+.m-franja-abajo img { height: 2.6cqw; width: auto; }
+.m-menu { box-sizing: border-box; width: 100%; height: 100%; display: grid; grid-template-columns: 1.1fr .9fr; align-items: center; padding: 0 4cqw; }
+.m-desafios { display: grid; gap: 1.4cqw; }
+.m-desafio {
+  display: flex; align-items: center; gap: 1.2cqw; border: 0; cursor: pointer; color: var(--blanco);
+  font: 700 2.2cqw/1 var(--display); text-transform: uppercase; border-radius: 99px; padding: .5cqw 3cqw .5cqw .5cqw;
+  box-shadow: 0 .35cqw 0 rgba(0,0,0,.18); transition: transform .15s ease; justify-self: start; text-align: left;
+}
+.m-desafio:hover { transform: translateX(.6cqw) scale(1.03); }
+.m-desafio:focus-visible { outline: .3cqw solid #f2c230; outline-offset: .3cqw; }
+.m-desafio .num { width: 4cqw; height: 4cqw; border-radius: 50%; border: .3cqw solid var(--blanco); display: grid; place-items: center; font-size: 2.6cqw; flex: none; }
+.m-desafio.d1 { background: #ef7a74; min-width: 40cqw; }
+.m-desafio.d2 { background: #e2332f; min-width: 35cqw; }
+.m-desafio.d3 { background: #b3161a; min-width: 28cqw; }
+.m-desafio.hecho .num { background: var(--teal); }
+
+/* Pajarito que habla */
+.habla { position: relative; border: 0; padding: 0; background: none; cursor: pointer; line-height: 0; }
+.habla img { display: block; width: 100%; height: auto; }
+.habla:focus-visible { outline: .3cqw solid #f2c230; outline-offset: .3cqw; border-radius: 1cqw; }
+.habla .toca {
+  position: absolute; right: 8%; top: 6%; background: #6a2a96; color: var(--blanco); border-radius: 50%;
+  width: 3cqw; height: 3cqw; display: grid; place-items: center; box-shadow: 0 .3cqw .6cqw rgba(0,0,0,.2);
+}
+.habla .toca svg { width: 55%; height: 55%; }
+.habla.hablando .toca { animation: latido 1.2s ease-out infinite; }
+.habla-esquina { position: absolute; right: 1.6cqw; bottom: .6cqw; width: 7.2cqw; z-index: 3; }
+.habla-menu { width: 21cqw; justify-self: center; }
+.habla { transition: transform .2s ease; }
+.habla:hover { transform: scale(1.05) rotate(-2deg); }
+.habla.hablando { animation: none; }
+
+/* ¿Cuál es el orden? */
+.m-video { position: relative; width: 62%; aspect-ratio: 16 / 9; background: #000; border-radius: 1cqw; overflow: hidden; box-shadow: 0 .6cqw 1.5cqw rgba(30,10,55,.2); }
+.m-video video { width: 100%; height: 100%; display: block; object-fit: contain; }
+.m-play {
+  position: absolute; inset: 0; margin: auto; width: 9cqw; height: 9cqw; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(255,255,255,.92); color: #6a2a96; display: grid; place-items: center; box-shadow: 0 .5cqw 1.5cqw rgba(0,0,0,.35);
+}
+.m-play svg { width: 45%; height: 45%; margin-left: 10%; }
+.m-sig {
+  position: relative; z-index: 4; flex: none;
+  display: inline-flex; align-items: center; gap: .6cqw; background: #6a2a96; color: var(--blanco);
+  border: .25cqw solid var(--blanco); border-radius: 99px; padding: .7cqw 2.2cqw; cursor: pointer;
+  font: 600 1.6cqw/1 var(--display); box-shadow: 0 .4cqw 1cqw rgba(30,10,55,.3);
+}
+.m-sig:hover { background: #7d36b0; }
+.m-sig svg { width: 1.6cqw; height: 1.6cqw; }
+
+/* ¿Es correcto? */
+.m-fila { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2cqw; width: 80%; }
+.m-tile { display: grid; justify-items: center; gap: .8cqw; position: relative; }
+.m-tile .num-amarillo {
+  width: 3.2cqw; height: 3.2cqw; border-radius: 50%; background: #f2b72d; color: var(--blanco);
+  display: grid; place-items: center; font-weight: 700; font-size: 1.8cqw; box-shadow: 0 0 0 .3cqw #fff3d0;
+}
+.m-tile .marco { width: 100%; aspect-ratio: 16 / 10; background: #000; border-radius: .9cqw; border: .45cqw solid #1f1f1f; outline: .25cqw solid #000; overflow: hidden; cursor: pointer; padding: 0; }
+.m-tile .marco video { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1.06); }
+.m-tile .etiqueta { font-weight: 700; font-size: 1.5cqw; color: #6a2a96; text-transform: uppercase; text-align: center; }
+.m-respuestas { display: flex; justify-content: center; gap: 2.4cqw; }
+.m-resp {
+  display: inline-flex; align-items: center; gap: 1cqw; background: #f2b72d; color: var(--blanco); border: 0; cursor: pointer;
+  font: 400 2cqw/1 var(--display); border-radius: .8cqw; padding: .5cqw 2cqw .5cqw .6cqw; box-shadow: 0 .4cqw 1cqw rgba(0,0,0,.15);
+  transition: transform .15s ease;
+}
+.m-resp b { font-weight: 700; }
+.m-resp:hover { transform: translateY(-.3cqw); }
+.m-resp .mano { width: 3.6cqw; height: 3.6cqw; border-radius: 50%; border: .3cqw solid rgba(255,255,255,.7); display: grid; place-items: center; }
+.m-resp .mano svg { width: 55%; height: 55%; }
+
+/* Ordena */
+.m-ordena { width: 74%; display: grid; gap: 1.2cqw; }
+.m-cartas, .m-casillas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2cqw; }
+.m-cartas { min-height: 13cqw; }
+.m-carta {
+  display: grid; justify-items: center; gap: .3cqw; cursor: grab; touch-action: none; user-select: none;
+  background: none; border: 0; padding: .3cqw; border-radius: 1cqw; transition: transform .15s ease, box-shadow .15s ease;
+}
+.m-carta img { height: 10cqw; width: auto; max-width: 100%; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
+.m-carta span { font-weight: 700; font-size: 1.2cqw; text-align: center; color: #6a2a96; text-transform: uppercase; }
+.m-carta.elegida { box-shadow: 0 0 0 .3cqw #f2c230; transform: scale(1.04); }
+.m-carta.arrastrando { position: fixed; z-index: 50; pointer-events: none; cursor: grabbing; transform: scale(1.08) rotate(-3deg); }
+.m-casilla { display: grid; justify-items: center; gap: .6cqw; }
+.m-casilla .hueco {
+  box-sizing: border-box; width: 100%; aspect-ratio: 1 / .78; border: .4cqw solid #f2b72d; border-radius: 1.2cqw; background: var(--blanco);
+  display: grid; place-items: center; transition: background .15s ease;
+}
+.m-casilla .hueco.sobre { background: #fff4d6; }
+.m-casilla .hueco .m-carta img { height: 8.5cqw; }
+.m-casilla .hueco .m-carta { max-width: 100%; }
+.m-casilla .num-amarillo { width: 3cqw; height: 3cqw; border-radius: 50%; background: #f2b72d; color: var(--blanco); display: grid; place-items: center; font-weight: 700; font-size: 1.7cqw; }
+.m-casilla.mal .hueco { border-color: #e2332f; animation: sacudir .4s ease; }
+.m-casilla.bien .hueco { border-color: var(--teal); }
+
+/* Mensajes */
+.m-mensaje {
+  position: absolute; z-index: 6; left: 50%; top: 42%; transform: translate(-50%, -50%);
+  background: var(--blanco); border-radius: 2cqw; padding: 1.6cqw 3cqw; text-align: center;
+  box-shadow: 0 1cqw 3cqw rgba(30,10,55,.3); animation: entrar .4s cubic-bezier(.2, 1.4, .4, 1) both;
+  font-size: 2.8cqw; font-weight: 700; color: #6a2a96; min-width: 30cqw;
+}
+.m-mensaje.ok { border: .45cqw solid var(--teal); }
+.m-mensaje.mal { border: .45cqw solid #e2332f; color: #b3161a; }
+.m-mensaje small { display: block; font-size: 1.5cqw; font-weight: 500; color: #555; margin-top: .4cqw; }
+
+/* Final y valoración */
+.m-final { position: absolute; inset: 0; background: #e3f0fb; display: grid; place-items: center; }
+.m-final img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.m-final h3 { position: absolute; top: 2.6cqw; left: 0; right: 0; text-align: center; margin: 0; font-size: 4.6cqw; font-weight: 700; color: #6a2a96; text-shadow: 0 .3cqw 0 var(--blanco); }
+.m-final .m-sig { position: absolute; bottom: 2.4cqw; left: 50%; transform: translateX(-50%); }
+.m-valora { background: var(--blanco); border-radius: 1.4cqw; box-shadow: 0 .6cqw 2cqw rgba(30,10,55,.15); padding: 3cqw 5cqw; text-align: center; display: grid; gap: 1.2cqw; justify-items: center; }
+.m-valora h3 { margin: 0; font-size: 2.4cqw; color: #2a1450; }
+.m-valora p { margin: 0; font-size: 1.5cqw; color: #666; }
+.estrellas { display: flex; gap: 1cqw; }
+.estrellas button { background: none; border: 0; cursor: pointer; padding: 0; color: #b9b2c6; transition: transform .15s ease, color .15s ease; }
+.estrellas button svg { width: 4.5cqw; height: 4.5cqw; }
+.estrellas button.on { color: #f2b72d; }
+.estrellas button:hover { transform: scale(1.15); }
+.estrellas button:focus-visible { outline: .3cqw solid #6a2a96; border-radius: .6cqw; }
+
+
+/* Docentes */
+.m-docentes { position: absolute; inset: 0; z-index: 8; background: rgba(30,10,55,.55); display: grid; place-items: center; }
+.m-docentes .caja { background: var(--blanco); border-radius: 1.6cqw; padding: 2.4cqw 3cqw; display: grid; gap: 1.2cqw; min-width: 34cqw; position: relative; }
+.m-docentes h3 { margin: 0 0 .4cqw; font-size: 2.2cqw; color: #6a2a96; }
+.m-docentes a { display: flex; align-items: center; gap: 1cqw; background: #f3ecfa; color: #4a1e73; text-decoration: none; font-weight: 600; font-size: 1.6cqw; padding: 1cqw 1.4cqw; border-radius: 1cqw; }
+.m-docentes a:hover { background: #e7d9f6; }
+.m-docentes a svg { width: 2cqw; height: 2cqw; flex: none; }
+.m-docentes .x { position: absolute; top: 1cqw; right: 1cqw; width: 3cqw; height: 3cqw; border-radius: 50%; border: 0; background: #f3ecfa; color: #6a2a96; cursor: pointer; font-size: 1.8cqw; }
+
+/* Navegación siempre abajo: Atrás, Desafíos, Actividades y Docentes en todas las pantallas del desafío */
+.mision, .mision.es-menu { grid-template-rows: 11% 1fr 7%; grid-template-columns: 1fr; }
+.mision .m-lado, .mision.es-menu .m-lado { display: none; }
+.mision .m-cuerpo { grid-column: 1; }
+.mision .m-franja-abajo { display: flex; }
+.mision:not(.es-menu) .m-cabeza { padding-left: 0; }
+
+/* Menú de actividades con tarjetas ilustradas (Desafío 1) */
+.m-menu-act { position: relative; width: 100%; height: 100%; display: grid; place-items: center; }
+.m-actividades { position: relative; display: flex; align-items: center; gap: 8cqw; margin-top: -3cqw; }
+.m-actividades::before { content: ""; position: absolute; left: 10cqw; right: 10cqw; top: 46%; border-top: .45cqw dotted #7a3fc6; z-index: 0; }
+.m-act { position: relative; z-index: 1; width: 19cqw; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 3cqw; transition: transform .18s cubic-bezier(.2, 1.4, .4, 1); animation: aparecer .5s cubic-bezier(.2, 1.4, .4, 1) both; }
+.m-act:nth-child(2) { animation-delay: .08s; } .m-act:nth-child(3) { animation-delay: .16s; }
+.m-act img { display: block; width: 100%; height: auto; filter: drop-shadow(0 .5cqw .6cqw rgba(30, 10, 55, .22)); pointer-events: none; -webkit-user-drag: none; }
+.m-act:hover { transform: translateY(-.6cqw) scale(1.05); }
+.m-act:focus-visible { outline: .35cqw solid #f2c230; outline-offset: .4cqw; }
+.m-act .sello-act { position: absolute; right: -.8cqw; top: -.8cqw; width: 4.2cqw; height: 4.2cqw; border-radius: 50%; background: var(--teal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 60% no-repeat; border: .35cqw solid var(--blanco); box-shadow: 0 .3cqw .5cqw rgba(0,0,0,.25); display: none; }
+.m-act.hecho .sello-act { display: block; animation: entrar .5s cubic-bezier(.2, 1.4, .4, 1) both; }
+.m-act.siguiente::after { content: ""; position: absolute; left: 50%; bottom: -7.2cqw; width: 4.4cqw; height: 5.4cqw; margin-left: -2.2cqw; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 54'%3E%3Cpath d='M22 3 41 24H30v26H14V24H3z' fill='%23f39a2b' stroke='%23d9531e' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M22 9 34 22h-6' fill='none' stroke='%23ffd27a' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat; animation: rebote-flecha 1.1s ease-in-out infinite; pointer-events: none; }
+@keyframes rebote-flecha { 50% { transform: translateY(-.9cqw); } }
+.habla-menu-esq { position: absolute; right: 2cqw; bottom: 1cqw; width: 11cqw; z-index: 3; }
+@media (prefers-reduced-motion: reduce) { .m-act, .m-act.siguiente::after { animation: none; } }
+
+/* Guía docente: tarjeta con tapa y visor de páginas */
+.caja-guia { min-width: 46cqw; }
+.guia { display: flex; gap: 2cqw; align-items: center; }
+.guia-tapa { width: 16cqw; height: auto; border-radius: .8cqw; box-shadow: 0 .4cqw 1cqw rgba(30,10,55,.25); }
+.guia-info { display: grid; gap: .8cqw; color: #4a1e73; max-width: 26cqw; }
+.guia-info b { font-size: 2cqw; }
+.guia-info span { font-size: 1.3cqw; color: #6b6077; line-height: 1.35; }
+.guia-botones { display: flex; gap: 1cqw; margin-top: .4cqw; }
+.guia-btn { display: inline-flex; align-items: center; gap: .6cqw; background: #6a2a96; color: var(--blanco); border: 0; border-radius: 99px; padding: .8cqw 1.6cqw; font: 600 1.4cqw/1 var(--display); text-decoration: none; cursor: pointer; }
+.guia-btn:hover { background: #7d36b0; }
+.guia-btn svg { width: 1.6cqw; height: 1.6cqw; }
+.m-visor { position: absolute; inset: 0; z-index: 9; background: #2a1450; display: grid; grid-template-rows: auto 1fr; }
+.m-docentes a.guia-btn { background: #6a2a96; color: var(--blanco); font-size: 1.4cqw; padding: .8cqw 1.6cqw; }
+.m-docentes a.guia-btn:hover { background: #7d36b0; }
+.visor-barra { display: flex; align-items: center; gap: 1.4cqw; padding: 1cqw 7cqw 1cqw 2cqw; background: #6a2a96; color: var(--blanco); }
+.visor-barra b { font-size: 1.8cqw; margin-right: auto; }
+.visor-barra .guia-btn { background: rgba(255,255,255,.16); }
+.visor-barra .guia-btn:hover { background: rgba(255,255,255,.28); }
+.visor-paginas { overflow-y: auto; padding: 2cqw; display: grid; gap: 2cqw; justify-items: center; }
+.visor-paginas img { width: min(100%, 70cqw); height: auto; border-radius: .4cqw; box-shadow: 0 .6cqw 1.6cqw rgba(0,0,0,.35); background: #fff; }
+
+@keyframes sacudir { 25% { transform: translateX(-.6cqw); } 50% { transform: translateX(.6cqw); } 75% { transform: translateX(-.3cqw); } }
+
+/* ---------- Misión 2: Hablar con símbolos ---------- */
+.m-desafio.o1 { background: #ef7430; min-width: 40cqw; }
+.m-desafio.o2 { background: #f3a676; min-width: 35cqw; }
+.m-flechas { display: grid; grid-template-columns: 8cqw 1fr; gap: 3cqw; align-items: center; width: 78%; }
+.m-flechas .col { display: grid; gap: 1.1cqw; justify-items: center; }
+.m-flechas .casa-flecha { width: 7cqw; height: 7cqw; display: grid; place-items: center; }
+.flecha {
+  width: 6.6cqw; height: 6.6cqw; border-radius: 1cqw; background: #6e8ca4; color: var(--blanco); border: 0;
+  display: grid; place-items: center; cursor: grab; touch-action: none; user-select: none; padding: 0;
+  box-shadow: 0 .35cqw 0 #4f6b82; transition: transform .15s ease;
+}
+.flecha svg { width: 55%; height: 55%; pointer-events: none; }
+.flecha.elegida { box-shadow: 0 0 0 .35cqw #f2c230; transform: scale(1.06); }
+.flecha.arrastrando { position: fixed; z-index: 50; pointer-events: none; transform: scale(1.1) rotate(-4deg); }
+.m-palabras { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.8cqw; }
+.m-palabra { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: .8cqw; }
+.m-palabra .hueco {
+  box-sizing: border-box; width: 86%; aspect-ratio: 1 / 1; border: .45cqw solid #6e8ca4; border-radius: 1.2cqw; background: var(--blanco);
+  display: grid; place-items: center; transition: background .15s ease;
+}
+.m-palabra .hueco.sobre { background: #e7eff6; }
+.m-palabra .hueco .flecha { width: 70%; height: 70%; }
+.m-palabra .decir {
+  background: none; border: 0; cursor: pointer; color: #6e8ca4; font: 700 2cqw/1 var(--display); white-space: nowrap;
+  display: inline-flex; align-items: center; gap: .6cqw; padding: .4cqw .8cqw; border-radius: 99px;
+}
+.m-palabra .decir:hover { background: #e7eff6; }
+.m-palabra .decir svg { width: 1.8cqw; height: 1.8cqw; }
+.m-palabra.mal .hueco { border-color: #e2332f; animation: sacudir .4s ease; }
+.m-palabra.bien .hueco { border-color: var(--teal); }
+.m-juego { width: 72%; aspect-ratio: 16 / 9; border: 0; border-radius: 1cqw; box-shadow: 0 .6cqw 1.5cqw rgba(30,10,55,.2); background: #eef6fb; }
+
+/* ---------- Misión 3: ¡Acción! ---------- */
+.m-desafio.a1 { background: #ecb22c; min-width: 40cqw; }
+.m-desafio.a2 { background: #efc35a; min-width: 35cqw; }
+.m-desafio.a3 { background: #f2d07f; min-width: 28cqw; }
+.m-desafio.a2, .m-desafio.a3 { text-shadow: 0 .1cqw .3cqw rgba(120,80,0,.35); }
+.m-senales { width: 70%; display: grid; gap: 2.2cqw; }
+.m-senales .fila { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.4cqw; }
+.m-destino { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: .8cqw; }
+.m-destino .decir { background: none; border: 0; cursor: pointer; color: #6e8ca4; font: 700 1.8cqw/1.1 var(--display); text-align: center; display: inline-flex; align-items: center; gap: .5cqw; padding: .4cqw .8cqw; border-radius: 1cqw; min-height: 4.4cqw; }
+.m-destino .decir:hover { background: #e7eff6; }
+.m-destino .decir svg { width: 1.6cqw; height: 1.6cqw; flex: none; }
+.m-destino .hueco { box-sizing: border-box; width: 80%; aspect-ratio: 1 / 1; border: .45cqw solid #6e8ca4; border-radius: 1.2cqw; background: var(--blanco); display: grid; place-items: center; }
+.m-destino .hueco.sobre { background: #e7eff6; }
+.m-destino.mal .hueco { border-color: #e2332f; animation: sacudir .4s ease; }
+.m-destino.bien .hueco { border-color: var(--teal); }
+.casa-senal { display: grid; place-items: center; min-height: 11cqw; }
+.senal { position: relative; width: 10cqw; border: 0; padding: 0; background: none; cursor: grab; touch-action: none; user-select: none; border-radius: .8cqw; transition: transform .15s ease; }
+.senal img.s { display: block; width: 100%; height: auto; pointer-events: none; -webkit-user-drag: none; filter: drop-shadow(0 .3cqw .5cqw rgba(0,0,0,.2)); }
+.senal img.p { position: absolute; left: -1.2cqw; bottom: -.8cqw; width: 3.6cqw; pointer-events: none; }
+.senal.elegida { box-shadow: 0 0 0 .35cqw #f2c230; transform: scale(1.05); }
+.senal.arrastrando { position: fixed; z-index: 50; pointer-events: none; transform: scale(1.08) rotate(-3deg); }
+.m-destino .hueco .senal { width: 78%; }
+.m-pag[data-p="instrucciones"] { gap: 1.4cqw; }
+.m-instr { list-style: none; margin: 0; padding: 0; display: flex; gap: 1.4cqw; }
+.m-instr img { width: 5.6cqw; height: 5.6cqw; object-fit: contain; display: block; filter: drop-shadow(0 .25cqw .4cqw rgba(0,0,0,.18)); }
+.m-mapa { position: relative; width: 56%; border-radius: 1cqw; overflow: hidden; box-shadow: 0 .6cqw 1.5cqw rgba(30,10,55,.2); line-height: 0; }
+.m-mapa img { width: 100%; height: auto; display: block; }
+.m-punto { position: absolute; width: 4.2cqw; height: 4.2cqw; transform: translate(-50%, -50%); border-radius: 50%; border: .35cqw solid var(--blanco); background: rgba(255,255,255,.55); cursor: pointer; box-shadow: 0 .3cqw .8cqw rgba(0,0,0,.3); animation: latido-punto 1.8s ease-in-out infinite; }
+.m-punto:hover { background: rgba(255,255,255,.85); }
+.m-punto.ok { background: var(--teal); animation: none; }
+.m-punto.no { background: #e2332f; animation: sacudir .4s ease; }
+@keyframes latido-punto { 50% { box-shadow: 0 0 0 .8cqw rgba(255,255,255,.35), 0 .3cqw .8cqw rgba(0,0,0,.3); } }
+.m-recorrido { width: 80%; display: grid; grid-template-columns: 1.2fr 1fr; gap: 3cqw; align-items: center; }
+.m-pasos { display: grid; gap: 1.1cqw; margin: 0; padding: 0; list-style: none; }
+.m-pasos li { display: flex; align-items: center; gap: 1cqw; }
+.m-pasos .n { width: 2.4cqw; height: 2.4cqw; border-radius: 50%; background: #c9c3d3; color: var(--blanco); display: grid; place-items: center; font-weight: 700; font-size: 1.3cqw; flex: none; }
+.m-pasos .t { flex: 1; background: #5b1f8a; color: var(--blanco); font-weight: 700; font-size: 1.7cqw; text-transform: uppercase; padding: .8cqw 1.4cqw; border-radius: .7cqw; box-shadow: 0 .3cqw .6cqw rgba(0,0,0,.15); }
+.m-tecnos { display: grid; gap: 1.4cqw; }
+.m-tecno { display: flex; align-items: center; gap: 1.2cqw; background: var(--blanco); border: .3cqw solid #e2d8ee; border-radius: 1.2cqw; padding: 1.2cqw 1.6cqw; cursor: pointer; font: 600 1.8cqw/1.2 var(--display); color: #4a1e73; text-align: left; transition: transform .15s ease, border-color .15s ease; }
+.m-tecno:hover { transform: translateY(-.3cqw); }
+.m-tecno[aria-pressed="true"] { border-color: var(--teal); background: #eaf7f2; }
+.m-tecno svg { width: 3.6cqw; height: 3.6cqw; flex: none; color: #6a2a96; }
+.m-tecno img { width: 6.5cqw; height: auto; flex: none; }
+.m-pregunta { display: grid; justify-items: center; gap: 1cqw; }
+.m-pregunta p { margin: 0; font-weight: 700; font-size: 1.8cqw; color: #5b1f8a; text-transform: uppercase; text-align: center; }
+.m-botones-tb { display: flex; gap: 2.4cqw; }
+.tb-op { width: 7cqw; height: 7cqw; border: 0; background: none; padding: .4cqw; border-radius: 1.4cqw; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+.tb-op img { width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 .3cqw .4cqw rgba(0,0,0,.2)); }
+.tb-op:hover { transform: translateY(-.4cqw) scale(1.06); }
+.tb-op.ok { box-shadow: 0 0 0 .4cqw var(--teal); }
+.tb-op.no { animation: sacudir .4s ease; }
+.m-tecno b { display: block; font-size: 2.1cqw; }
+
+/* ---------- Misión 4: Escribir en código ---------- */
+.m-desafio.v1 { background: #2f4d16; min-width: 42cqw; }
+.m-desafio.v2 { background: #4e7d26; min-width: 36cqw; }
+.m-desafio.v3 { background: #6ea83c; min-width: 33cqw; }
+.m-desafio.v4 { background: #8fb56d; min-width: 38cqw; }
+.m-desafio.v5 { background: #5a6152; min-width: 33cqw; }
+.mision .m-desafios.cinco { gap: 1cqw; }
+.mision .m-desafios.cinco .m-desafio { font-size: 1.9cqw; }
+.mision .m-desafios.cinco .num { width: 3.4cqw; height: 3.4cqw; font-size: 2.2cqw; }
+.m-escala { position: relative; width: 70%; aspect-ratio: calc(var(--w) / var(--h)); border-radius: 1cqw; overflow: hidden; box-shadow: 0 .6cqw 1.5cqw rgba(30,10,55,.2); background: #fff; flex: none; }
+.m-escala iframe { position: absolute; left: 0; top: 0; border: 0; width: calc(var(--w) * 1px); height: calc(var(--h) * 1px); transform-origin: 0 0; transform: scale(var(--s, .7)); }
+.m-escenas { width: 80%; display: grid; gap: 1.6cqw; }
+.m-escenas .fila { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.4cqw; }
+.casa-escena { display: grid; place-items: center; min-height: 11.5cqw; }
+.escena { border: 0; padding: 0; background: none; cursor: grab; touch-action: none; user-select: none; width: 15cqw; border-radius: .8cqw; overflow: hidden; box-shadow: 0 .4cqw 1cqw rgba(30,10,55,.2); transition: transform .15s ease; line-height: 0; }
+.escena img { width: 100%; height: auto; display: block; pointer-events: none; -webkit-user-drag: none; }
+.escena.elegida { box-shadow: 0 0 0 .35cqw #f2c230; transform: scale(1.04); }
+.escena.arrastrando { position: fixed; z-index: 50; pointer-events: none; transform: scale(1.05) rotate(-2deg); }
+.m-casillero { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: .8cqw; }
+.m-casillero .hueco { box-sizing: border-box; width: 100%; aspect-ratio: 4 / 3; border: .4cqw solid #6a2a96; border-radius: 1cqw; background: var(--blanco); display: grid; place-items: center; overflow: hidden; }
+.m-casillero .hueco.sobre { background: #f3ecfa; }
+.m-casillero .hueco .escena { width: 92%; }
+.m-casillero .num-morado { width: 3cqw; height: 3cqw; border-radius: 50%; background: #6a2a96; color: var(--blanco); display: grid; place-items: center; font-weight: 700; font-size: 1.7cqw; }
+.m-casillero.mal .hueco { border-color: #e2332f; animation: sacudir .4s ease; }
+.m-casillero.bien .hueco { border-color: var(--teal); }
+
+/* Misión 5 */
+.m-desafio.b1 { background: #1f4e8c; min-width: 40cqw; }
+.m-desafio.b2 { background: #4f9ad8; min-width: 35cqw; }
+.m-pag[data-p="cuantas"] { gap: 1cqw; justify-content: safe center; padding: 1cqw 0 3.5cqw; }
+.m-pag[data-p="cuantas"] .m-sig { margin-top: .4cqw; }
+.m-numeros { display: flex; gap: 2cqw; }
+.m-tira { display: flex; gap: .6cqw; }
+.m-tira span { display: flex; gap: .4cqw; background: #b8bac4; padding: .7cqw; border-radius: .6cqw; box-shadow: 0 .2cqw .6cqw rgba(0,0,0,.15); }
+.m-tira svg { width: 4.1cqw; height: 4.1cqw; display: block; }
+.num-op { width: 6.4cqw; height: 6.4cqw; border: 0; border-radius: 50%; background: #4f9ad8; color: #fff; font: 700 3.4cqw/1 var(--display); cursor: pointer; box-shadow: 0 .4cqw 0 #1f4e8c; transition: transform .15s ease, background .15s ease; }
+.num-op:hover { transform: translateY(-.3cqw); }
+.num-op.ok { background: var(--teal); box-shadow: 0 .4cqw 0 #157a6e; }
+.num-op.no { animation: sacudir .4s ease; background: #e2332f; box-shadow: 0 .4cqw 0 #8a1715; }
+.m-anim { display: block; border-radius: 1cqw; box-shadow: 0 .6cqw 1.5cqw rgba(30,10,55,.2); background: #fff; object-fit: contain; }
+#mision5 .m-tecno span { text-transform: uppercase; }
+.m-imprimir { display: inline-flex; align-items: center; gap: .8cqw; background: var(--blanco); color: #4a1e73; text-decoration: none; font: 600 1.6cqw/1 var(--display); padding: .9cqw 1.6cqw; border-radius: 3cqw; border: .25cqw solid #e2d8ee; }
+.m-imprimir:hover { border-color: #b98ad8; }
+.m-imprimir svg { width: 2cqw; height: 2cqw; }
+@keyframes aparecer { from { opacity: 0; transform: translateY(2cqw) scale(.9); } }
+@keyframes latido-tarjeta { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.08); } }
+
+@keyframes entrar { from { opacity: 0; transform: translateY(1.5cqw) scale(.92); } }
+@keyframes brillo { 50% { transform: scale(1.5) rotate(45deg); opacity: .6; } }
+@keyframes latido { from { transform: scale(1); opacity: .9; } to { transform: scale(1.35); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .titulo, .btn, .chispa, .sonido.espera::after, .tarjeta, .tarjeta.siguiente::after { animation: none; }
+}
+</style>
+
+<canvas id="estrellas" aria-hidden="true"></canvas>
+
+<main class="escenario" aria-label="Portada de Aventuras programadas">
+  <video class="fondo" id="fondo" src="portada/web/fondo.mp4" poster="portada/web/fondo-poster.jpg" autoplay muted loop playsinline aria-hidden="true"></video>
+  <div class="logo-pcia logo-portada destacado" id="logo-portada"><img src="portada/web/logo-pcia.png" alt="Pensamiento Computacional e Inteligencia Artificial"></div>
+  <svg class="chispa" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 0c1 7 5 11 12 12-7 1-11 5-12 12-1-7-5-11-12-12 7-1 11-5 12-12z"/></svg>
+  <h1 class="titulo"><span class="a">AVENTURAS</span> <span class="b">PROGRAMADAS</span></h1>
+  <div class="botones">
+    <button class="btn btn-teal" id="ver" type="button">Ver presentación</button>
+    <button class="btn btn-naranja" id="jugar" type="button">Jugar</button>
+  </div>
+</main>
+
+<button class="sonido" id="sonido" type="button" aria-pressed="false" aria-label="Silenciar música">
+  <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+  <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z" fill="currentColor"/><path d="m16 9 6 6"/><path d="m22 9-6 6"/></svg>
+</button>
+
+<audio id="musica" src="portada/web/musica.mp3" loop preload="auto"></audio>
+
+<div class="capa" id="capa-video" role="dialog" aria-modal="true" aria-label="Presentación" hidden>
+  <div class="presentacion-marco">
+    <div class="pantalla">
+      <video id="presentacion" playsinline preload="auto" disablepictureinpicture>
+        <source src="portada/web/presentacion_v2.mp4" type="video/mp4">
+        <track id="subs" kind="subtitles" srclang="es" label="Español">
+      </video>
+      <div class="logo-pcia logo-video destacado" id="logo-video"><img src="portada/web/logo-pcia.png" alt="Pensamiento Computacional e Inteligencia Artificial"></div>
+      <h2 class="cartel" id="titulo-video">
+        <img src="portada/web/cartel.png" alt="Aventuras programadas" onerror="this.parentNode.classList.add('sin-imagen')">
+        <span class="texto"><span class="a">AVENTURAS</span><br><span class="b">PROGRAMADAS</span></span>
+      </h2>
+      <button class="cerrar" id="cerrar-video" type="button">Saltar presentación
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 5v14l9-7zM13 5v14l9-7z"/></svg>
+      </button>
+      <div class="final" id="final-video" hidden>
+        <button class="btn btn-naranja" id="jugar-final" type="button">Jugar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="escenario vista-mapa" id="vista-mapa" aria-label="Mapa de desafíos" hidden>
+  <header class="franja franja-arriba">
+    <div class="logo-mapa"><img src="portada/web/logo-pcia.png" alt="Pensamiento Computacional e Inteligencia Artificial"></div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
+    <h2>DESAFÍOS</h2>
+    <span class="progreso" id="progreso">0 de 12</span>
+  </header>
+  <div class="mapa-medio">
+    <video id="fondo-mapa" src="portada/web/fondo.mp4" muted loop playsinline aria-hidden="true"></video>
+    <div class="tarjetas" id="tarjetas"></div>
+    <div class="aviso" id="aviso" role="status" hidden></div>
+  </div>
+  <footer class="franja franja-abajo">
+    <button class="nav-mapa" id="ir-inicio" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+      Inicio
+    </button>
+    <button class="nav-mapa nav-docentes" id="ir-docentes" type="button">
+      <img src="mapa/web/docentes.webp" alt="" aria-hidden="true">
+      Docentes
+    </button>
+  </footer>
+</section>
+
+<section class="escenario mision es-menu" id="mision1" aria-label="Desafío 1: Orden en la secuencia" hidden>
+  <header class="m-cabeza">
+    <h2 class="m-pastilla" id="m1-titulo">ORDEN EN LA SECUENCIA</h2>
+    <p class="m-indica" id="m1-indica">Selecciona una de las actividades</p>
+  </header>
+  <nav class="m-lado" aria-label="Navegación del desafío">
+    <button type="button" data-ir="atras" aria-label="Volver a la página anterior"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></span>Atrás</button>
+    <button type="button" data-ir="mapa"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></span>Desafíos</button>
+    <button type="button" data-ir="menu"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="2"/><path d="m12 12 7-7M16 5h3v3"/></svg></span>Actividades</button>
+    <button type="button" data-ir="docentes"><span class="ico"><img src="mapa/web/docentes.webp" alt=""></span>Docentes</button>
+    <img class="logo-lado" src="portada/web/logo-pcia.png" alt="">
+  </nav>
+  <div class="m-cuerpo">
+    <!-- Menú -->
+    <div class="m-pag" data-p="menu">
+      <div class="m-menu-act">
+        <div class="m-actividades">
+          <button class="m-act" type="button" data-ir="orden"><img src="misiones/mision-01/imagenes/tarjeta_orden.webp" alt="¿Cuál es el orden?"><span class="sello-act" aria-hidden="true"></span></button>
+          <button class="m-act" type="button" data-ir="correcto"><img src="misiones/mision-01/imagenes/tarjeta_correcto.webp" alt="¿Es correcto?"><span class="sello-act" aria-hidden="true"></span></button>
+          <button class="m-act" type="button" data-ir="ordena"><img src="misiones/mision-01/imagenes/tarjeta_ordena.webp" alt="Ordena la secuencia"><span class="sello-act" aria-hidden="true"></span></button>
+        </div>
+        <button class="habla habla-menu-esq" type="button" data-quieto="misiones/mision-01/imagenes/pajarito_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito_habla_t.webp" data-voz="misiones/mision-01/audio/lolo_menu_desafio1.mp3" aria-label="Tocá al pajarito para escucharlo"></button>
+      </div>
+    </div>
+    <!-- 1. ¿Cuál es el orden? -->
+    <div class="m-pag" data-p="orden" hidden>
+      <div class="m-video">
+        <video id="m1-baile" src="misiones/mision-01/videos/pajaritos_a_volar.mp4" controls playsinline preload="metadata"></video>
+      </div>
+      <button class="m-sig" type="button" data-ir="correcto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-01/imagenes/pajarito2_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito2_habla_t.webp" data-voz="misiones/mision-01/audio/voz_cual_es_el_orden.mp3" aria-label="Tocá al pajarito para escucharlo"></button>
+    </div>
+    <!-- 2. ¿Es correcto? -->
+    <div class="m-pag" data-p="correcto" hidden>
+      <div class="m-fila" id="m1-fila"></div>
+      <div class="m-respuestas">
+        <button class="m-resp" type="button" id="m1-si"><span class="mano"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21h4V9H2zm20-11a2 2 0 0 0-2-2h-6.3l1-4.6v-.3c0-.4-.2-.8-.4-1.1L13.2 1 6.6 7.6c-.4.4-.6.9-.6 1.4v10a2 2 0 0 0 2 2h9c.8 0 1.5-.5 1.8-1.2l3-7.1.2-.7z"/></svg></span><span><b>SÍ</b>, es correcto</span></button>
+        <button class="m-resp" type="button" id="m1-no"><span class="mano"><svg viewBox="0 0 24 24" fill="currentColor" style="transform:rotate(180deg)"><path d="M2 21h4V9H2zm20-11a2 2 0 0 0-2-2h-6.3l1-4.6v-.3c0-.4-.2-.8-.4-1.1L13.2 1 6.6 7.6c-.4.4-.6.9-.6 1.4v10a2 2 0 0 0 2 2h9c.8 0 1.5-.5 1.8-1.2l3-7.1.2-.7z"/></svg></span><span><b>No</b>, no es correcto</span></button>
+      </div>
+      <button class="m-sig" type="button" data-ir="ordena" id="m1-sig2" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" style="width:11cqw" data-quieto="misiones/mision-01/imagenes/pajarito_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito_habla_t.webp" data-voz="misiones/mision-01/audio/lolo_es_correcto.mp3" aria-label="Tocá a Lolo para escucharlo"></button>
+    </div>
+    <!-- 3. Ordena -->
+    <div class="m-pag" data-p="ordena" hidden>
+      <div class="m-ordena">
+        <div class="m-cartas" id="m1-cartas"></div>
+        <div class="m-casillas" id="m1-casillas"></div>
+      </div>
+      <button class="m-sig" type="button" data-ir="final" id="m1-sig3" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-01/imagenes/pajarito_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito_habla_t.webp" data-voz="misiones/mision-01/audio/lolo_ordena.mp3" aria-label="Tocá al pajarito para escucharlo"></button>
+    </div>
+    <!-- Final -->
+    <div class="m-pag" data-p="final" hidden>
+      <div class="m-final">
+        <img id="m1-festejo" alt="El pajarito festeja">
+        <h3>¡Desafío 1 completo!</h3>
+        <button class="m-sig" type="button" data-ir="mapa">Volver a los desafíos</button>
+      </div>
+    </div>
+    <div class="m-mensaje" id="m1-mensaje" role="status" hidden></div>
+  </div>
+  <footer class="m-franja-abajo">
+    <button type="button" data-ir="atras" aria-label="Volver a la página anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Atrás</button>
+    <button type="button" data-ir="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>Desafíos</button>
+    <button type="button" data-ir="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="2"/></svg>Actividades</button>
+    <button type="button" data-ir="docentes"><img src="mapa/web/docentes.webp" alt="">Docentes</button>
+  </footer>
+  <div class="m-docentes" id="m1-docentes" role="dialog" aria-modal="true" aria-label="Materiales para docentes" hidden>
+    <div class="caja caja-guia">
+      <button class="x" type="button" id="m1-docentes-x" aria-label="Cerrar">✕</button>
+      <h3>Para docentes</h3>
+      <div class="guia">
+        <img class="guia-tapa" src="docentes/desafio-01/paginas/p-01.webp" alt="Tapa de la guía Orden en la secuencia">
+        <div class="guia-info">
+          <b>Orden en la secuencia</b>
+          <span>Secuencia didáctica, actividades del juego y recorrido sugerido. PDF de 19 páginas.</span>
+          <div class="guia-botones">
+            <button type="button" class="guia-btn" id="m1-ver-guia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Ver</button>
+            <a class="guia-btn" data-descargar href="docentes/desafio-01/Orden_en_la_secuencia.pdf" download="Orden_en_la_secuencia.pdf" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Descargar</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="m-visor" id="m1-visor" role="dialog" aria-modal="true" aria-label="Guía Orden en la secuencia" hidden>
+    <div class="visor-barra">
+      <b>Orden en la secuencia</b>
+      <a class="guia-btn" data-descargar href="docentes/desafio-01/Orden_en_la_secuencia.pdf" download="Orden_en_la_secuencia.pdf" target="_blank" rel="noopener">Descargar</a>
+      <button type="button" class="guia-btn" id="m1-visor-cerrar">Cerrar ✕</button>
+    </div>
+    <div class="visor-paginas"><img loading="lazy" src="docentes/desafio-01/paginas/p-01.webp" alt="Página 1 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-02.webp" alt="Página 2 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-03.webp" alt="Página 3 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-04.webp" alt="Página 4 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-05.webp" alt="Página 5 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-06.webp" alt="Página 6 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-07.webp" alt="Página 7 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-08.webp" alt="Página 8 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-09.webp" alt="Página 9 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-10.webp" alt="Página 10 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-11.webp" alt="Página 11 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-12.webp" alt="Página 12 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-13.webp" alt="Página 13 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-14.webp" alt="Página 14 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-15.webp" alt="Página 15 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-16.webp" alt="Página 16 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-17.webp" alt="Página 17 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-18.webp" alt="Página 18 de 19"><img loading="lazy" src="docentes/desafio-01/paginas/p-19.webp" alt="Página 19 de 19"></div>
+  </div>
+</section>
+
+<section class="escenario mision es-menu" id="mision2" aria-label="Desafío 2: Hablar con símbolos" hidden>
+  <header class="m-cabeza">
+    <h2 class="m-pastilla" data-titulo>HABLAR CON SÍMBOLOS</h2>
+    <p class="m-indica" data-indica></p>
+  </header>
+  <nav class="m-lado" aria-label="Navegación del desafío">
+    <button type="button" data-ir="atras" aria-label="Volver a la página anterior"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></span>Atrás</button>
+    <button type="button" data-ir="mapa"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></span>Desafíos</button>
+    <button type="button" data-ir="menu"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="2"/><path d="m12 12 7-7M16 5h3v3"/></svg></span>Actividades</button>
+    <button type="button" data-ir="docentes"><span class="ico"><img src="mapa/web/docentes.webp" alt=""></span>Docentes</button>
+    <img class="logo-lado" src="portada/web/logo-pcia.png" alt="">
+  </nav>
+  <div class="m-cuerpo">
+    <div class="m-pag" data-p="menu">
+      <div class="m-menu">
+        <div class="m-desafios">
+          <button class="m-desafio o1" type="button" data-ir="significados"><span class="num">1</span>Significados</button>
+          <button class="m-desafio o2" type="button" data-ir="hacia"><span class="num">2</span>¿Hacia dónde?</button>
+        </div>
+        <button class="habla habla-menu" type="button" data-quieto="misiones/mision-01/imagenes/pajarito_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito_habla_t.webp" data-voz="misiones/mision-02/audio/voz_menu.mp3" aria-label="Tocá al pajarito para escucharlo"></button>
+      </div>
+    </div>
+    <div class="m-pag" data-p="significados" hidden>
+      <div class="m-flechas">
+        <div class="col" data-cartas></div>
+        <div class="m-palabras" data-huecos></div>
+      </div>
+      <button class="m-sig" type="button" data-ir="hacia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-01/imagenes/pajarito_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito_habla_t.webp" data-voz="misiones/mision-02/audio/voz_significados.mp3" aria-label="Tocá al pajarito para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="hacia" hidden>
+      <iframe class="m-juego" data-juego title="Lolo y las nubes" src="about:blank"></iframe>
+      <button class="m-sig" type="button" data-ir="final" data-sig-hacia hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-01/imagenes/pajarito_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito_habla_t.webp" data-voz="misiones/mision-02/audio/voz_hacia_donde.mp3" aria-label="Tocá al pajarito para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="final" hidden>
+      <div class="m-final">
+        <img data-festejo alt="El pajarito festeja">
+        <h3>¡Desafío 2 completo!</h3>
+        <button class="m-sig" type="button" data-ir="mapa">Volver a los desafíos</button>
+      </div>
+    </div>
+    <div class="m-mensaje" data-mensaje role="status" hidden></div>
+  </div>
+  <footer class="m-franja-abajo">
+    <button type="button" data-ir="atras" aria-label="Volver a la página anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Atrás</button>
+    <button type="button" data-ir="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>Desafíos</button>
+    <button type="button" data-ir="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="2"/></svg>Actividades</button>
+    <button type="button" data-ir="docentes"><img src="mapa/web/docentes.webp" alt="">Docentes</button>
+  </footer>
+  <div class="m-docentes" data-docentes role="dialog" aria-modal="true" aria-label="Materiales para docentes" hidden>
+    <div class="caja">
+      <button class="x" type="button" data-docentes-x aria-label="Cerrar">✕</button>
+      <h3>Para docentes</h3>
+      <a href="https://drive.google.com/file/d/1n_7xMyb172hhGblAh7u3dYsrGVDk3gzg/view?usp=drive_link" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/></svg>Guía completa</a>
+      <a href="https://drive.google.com/file/d/1mbq2FwJDmsbIhHBEowZEfRXf6nFZ7ZGq/view?usp=drive_link" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>Secuencia didáctica</a>
+      <a href="https://drive.google.com/drive/folders/1raHli4AEIn0xt25q6aQn7I0n0XiW-O8f?usp=drive_link" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 8"/></svg>Imágenes para imprimir</a>
+    </div>
+  </div>
+</section>
+
+<section class="escenario mision es-menu" id="mision3" aria-label="Desafío 3: ¡Acción!" hidden>
+  <header class="m-cabeza">
+    <h2 class="m-pastilla" data-titulo>¡ACCIÓN!</h2>
+    <p class="m-indica" data-indica></p>
+  </header>
+  <nav class="m-lado" aria-label="Navegación del desafío">
+    <button type="button" data-ir="atras" aria-label="Volver a la página anterior"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></span>Atrás</button>
+    <button type="button" data-ir="mapa"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></span>Desafíos</button>
+    <button type="button" data-ir="menu"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="2"/><path d="m12 12 7-7M16 5h3v3"/></svg></span>Actividades</button>
+    <button type="button" data-ir="docentes"><span class="ico"><img src="mapa/web/docentes.webp" alt=""></span>Docentes</button>
+    <img class="logo-lado" src="portada/web/logo-pcia.png" alt="">
+  </nav>
+  <div class="m-cuerpo">
+    <div class="m-pag" data-p="menu">
+      <div class="m-menu">
+        <div class="m-desafios">
+          <button class="m-desafio a1" type="button" data-ir="simbolos"><span class="num">1</span>Símbolos</button>
+          <button class="m-desafio a2" type="button" data-ir="instrucciones"><span class="num">2</span>Instrucciones</button>
+          <button class="m-desafio a3" type="button" data-ir="recorrido"><span class="num">3</span>Recorrido</button>
+        </div>
+        <button class="habla habla-menu" type="button" data-quieto="misiones/mision-01/imagenes/pajarito_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito_habla_t.webp" data-voz="misiones/mision-03/audio/voz_menu.mp3" aria-label="Tocá al pajarito para escucharlo"></button>
+      </div>
+    </div>
+    <div class="m-pag" data-p="simbolos" hidden>
+      <div class="m-senales">
+        <div class="fila" data-huecos></div>
+        <div class="fila" data-cartas></div>
+      </div>
+      <button class="m-sig" type="button" data-ir="instrucciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-01/imagenes/pajarito_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito_habla_t.webp" data-voz="misiones/mision-03/audio/voz_simbolos.mp3" aria-label="Tocá al pajarito para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="instrucciones" hidden>
+      <div class="m-mapa">
+        <img src="misiones/mision-03/imagenes/mapa_reserva.jpg" alt="Mapa de la reserva con el parque de animales, el camping, el lago del bosque, el mirador y la playa">
+        <button class="m-punto" type="button" data-lugar="parque" style="left:7%;top:43%" aria-label="Parque de animales"></button>
+        <button class="m-punto" type="button" data-lugar="camping" style="left:41%;top:41%" aria-label="Camping"></button>
+        <button class="m-punto" type="button" data-lugar="lago" style="left:82.4%;top:43.5%" aria-label="Lago del bosque"></button>
+      </div>
+      <ol class="m-instr" aria-label="Instrucciones de Anita: avanza, gira hacia la izquierda, avanza, gira hacia la derecha, avanza">
+        <li><img src="misiones/mision-03/imagenes/instr_avanza.png" alt="Avanza"></li>
+        <li><img src="misiones/mision-03/imagenes/instr_gira_izquierda.png" alt="Gira hacia la izquierda"></li>
+        <li><img src="misiones/mision-03/imagenes/instr_avanza.png" alt="Avanza"></li>
+        <li><img src="misiones/mision-03/imagenes/instr_gira_derecha.png" alt="Gira hacia la derecha"></li>
+        <li><img src="misiones/mision-03/imagenes/instr_avanza.png" alt="Avanza"></li>
+      </ol>
+      <button class="m-sig" type="button" data-ir="recorrido" data-sig-instr hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-01/imagenes/pajarito_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito_habla_t.webp" data-voz="misiones/mision-03/audio/voz_instrucciones.mp3" aria-label="Tocá al pajarito para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="recorrido" hidden>
+      <div class="m-recorrido">
+        <ol class="m-pasos">
+          <li><span class="n">1</span><span class="t">Recorre tu escuela</span></li>
+          <li><span class="n">2</span><span class="t">Dibuja tu camino</span></li>
+          <li><span class="n">3</span><span class="t">Dibuja tres lugares que más te gusten</span></li>
+          <li><span class="n">4</span><span class="t">Representa el recorrido</span></li>
+        </ol>
+        <div class="m-tecnos">
+          <button class="m-tecno" type="button" aria-pressed="false" data-tecno="talebot" data-ir="talebot"><img src="misiones/mision-03/imagenes/talebot.png" alt=""><span>Te lo cuento con<b>TaleBot</b></span></button>
+          <button class="m-tecno" type="button" aria-pressed="false" data-tecno="scratchjr" data-ir="scratch3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><path d="m10 8.5 4 2-4 2z" fill="currentColor"/></svg><span>Te lo cuento con<b>ScratchJr</b></span></button>
+        </div>
+      </div>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-01/imagenes/pajarito_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito_habla_t.webp" data-voz="misiones/mision-03/audio/voz_recorrido_v2.mp3" aria-label="Tocá al pajarito para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="talebot" hidden>
+      <div class="m-video" style="width:50%"><video data-video-talebot src="misiones/mision-03/videos/talebot_parte1.mp4" controls playsinline preload="metadata"></video></div>
+      <div class="m-pregunta">
+        <p>¿Cuál es el botón que pone en movimiento al robot?</p>
+        <div class="m-botones-tb">
+          <button type="button" class="tb-op" data-ok="0"><img src="misiones/mision-03/imagenes/tb_boton_avanza.png" alt="Botón rojo con flecha hacia arriba"></button>
+          <button type="button" class="tb-op" data-ok="0"><img src="misiones/mision-03/imagenes/tb_boton_gira.png" alt="Botón amarillo con flecha de giro"></button>
+          <button type="button" class="tb-op" data-ok="0"><img src="misiones/mision-03/imagenes/tb_boton_retrocede.png" alt="Botón verde con flecha hacia abajo"></button>
+          <button type="button" class="tb-op" data-ok="1"><img src="misiones/mision-03/imagenes/tb_boton_play.png" alt="Botón naranja"></button>
+        </div>
+      </div>
+      <button class="m-sig" type="button" data-ir="final" data-sig-tb hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-01/imagenes/pajarito_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito_habla_t.webp" data-voz="misiones/mision-03/audio/voz_talebot_boton.mp3" aria-label="Tocá al pajarito para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="scratch3" hidden>
+      <div class="m-video" style="width:50%"><video data-video-sj3 src="misiones/mision-03/videos/tutorial_scratchjr.mp4" controls playsinline preload="metadata"></video></div>
+      <div class="m-pregunta">
+        <p>¿Cuál es el botón que permite comenzar a utilizar esta aplicación?</p>
+        <div class="m-botones-tb">
+          <button type="button" class="tb-op sj-op" data-ok="1"><img src="misiones/mision-03/imagenes/sj_boton1.png" alt="Botón con una casa"></button>
+          <button type="button" class="tb-op sj-op" data-ok="0"><img src="misiones/mision-03/imagenes/sj_boton2.png" alt="Botón con un signo de pregunta"></button>
+          <button type="button" class="tb-op sj-op" data-ok="0"><img src="misiones/mision-03/imagenes/sj_boton3.png" alt="Botón con un engranaje"></button>
+        </div>
+      </div>
+      <button class="m-sig" type="button" data-ir="final" data-sig-sj hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" data-sj-pajaro data-quieto="misiones/mision-01/imagenes/pajarito_quieto_t.png" data-anim="misiones/mision-01/imagenes/pajarito_habla_t.webp" data-voz="misiones/mision-03/audio/voz_scratchjr_1.mp3" aria-label="Tocá al pajarito para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="final" hidden>
+      <div class="m-final">
+        <img data-festejo alt="El pajarito festeja">
+        <h3>¡Desafío 3 completo!</h3>
+        <button class="m-sig" type="button" data-ir="mapa">Volver a los desafíos</button>
+      </div>
+    </div>
+    <div class="m-mensaje" data-mensaje role="status" hidden></div>
+  </div>
+  <footer class="m-franja-abajo">
+    <button type="button" data-ir="atras" aria-label="Volver a la página anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Atrás</button>
+    <button type="button" data-ir="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>Desafíos</button>
+    <button type="button" data-ir="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="2"/></svg>Actividades</button>
+    <button type="button" data-ir="docentes"><img src="mapa/web/docentes.webp" alt="">Docentes</button>
+  </footer>
+  <div class="m-docentes" data-docentes role="dialog" aria-modal="true" aria-label="Materiales para docentes" hidden>
+    <div class="caja">
+      <button class="x" type="button" data-docentes-x aria-label="Cerrar">✕</button>
+      <h3>Para docentes</h3>
+      <a href="https://drive.google.com/file/d/1WdEG5aoA1Dg3tsRZs7IFz9f_TajlwEIv/view?usp=drive_link" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/></svg>Guía completa</a>
+    </div>
+  </div>
+</section>
+
+<section class="escenario mision es-menu" id="mision4" aria-label="Desafío 4: Escribir en código" hidden>
+  <header class="m-cabeza">
+    <h2 class="m-pastilla" data-titulo>ESCRIBIR EN CÓDIGO</h2>
+    <p class="m-indica" data-indica></p>
+  </header>
+  <nav class="m-lado" aria-label="Navegación del desafío">
+    <button type="button" data-ir="atras" aria-label="Volver a la página anterior"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></span>Atrás</button>
+    <button type="button" data-ir="mapa"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></span>Desafíos</button>
+    <button type="button" data-ir="menu"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="2"/><path d="m12 12 7-7M16 5h3v3"/></svg></span>Actividades</button>
+    <button type="button" data-ir="docentes"><span class="ico"><img src="mapa/web/docentes.webp" alt=""></span>Docentes</button>
+    <img class="logo-lado" src="portada/web/logo-pcia.png" alt="">
+  </nav>
+  <div class="m-cuerpo">
+    <div class="m-pag" data-p="menu">
+      <div class="m-menu">
+        <div class="m-desafios cinco">
+          <button class="m-desafio v1" type="button" data-ir="cuento"><span class="num">1</span>Pausa para un cuento</button>
+          <button class="m-desafio v2" type="button" data-ir="ocurrio"><span class="num">2</span>¿Cómo ocurrió?</button>
+          <button class="m-desafio v3" type="button" data-ir="llegar"><span class="num">3</span>¿Cómo llegar?</button>
+          <button class="m-desafio v4" type="button" data-ir="cuenta"><span class="num">4</span>Tomás te cuenta</button>
+          <button class="m-desafio v5" type="button" data-ir="animado"><span class="num">5</span>Cuento animado</button>
+        </div>
+        <button class="habla habla-menu" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-04/audio/voz_menu.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+      </div>
+    </div>
+    <div class="m-pag" data-p="cuento" hidden>
+      <div class="m-video"><video data-video-cuento src="misiones/mision-04/videos/el_hogar_de_tomas.mp4" controls playsinline preload="metadata"></video></div>
+      <button class="m-sig" type="button" data-ir="ocurrio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" style="width:9cqw" data-quieto="misiones/mision-04/imagenes/carpincho_lector_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_lector_habla_t.webp" data-voz="misiones/mision-04/audio/voz_cuento.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="ocurrio" hidden>
+      <div class="m-escenas">
+        <div class="fila" data-cartas></div>
+        <div class="fila" data-huecos></div>
+      </div>
+      <button class="m-sig" type="button" data-ir="llegar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-04/audio/voz_como_ocurrio.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="llegar" hidden>
+      <div class="m-escala" style="--w:1000;--h:560"><iframe data-juego-llegar title="Tomás busca a Bruno" src="about:blank"></iframe></div>
+      <button class="m-sig" type="button" data-ir="cuenta" data-sig-llegar hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-04/audio/voz_como_llegar.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="cuenta" hidden>
+      <div class="m-escala" style="--w:1000;--h:520"><iframe data-juego-cuenta title="Tomás te cuenta" src="about:blank"></iframe></div>
+      <button class="m-sig" type="button" data-ir="animado" data-sig-cuenta hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-04/audio/voz_tomas_te_cuenta.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="animado" hidden>
+      <div class="m-tecnos" style="grid-template-columns:1fr 1fr;width:60%">
+        <button class="m-tecno" type="button" aria-pressed="false" data-tecno="talebot" data-ir="contalebot"><img src="misiones/mision-03/imagenes/talebot.png" alt=""><span>Reconstruí el cuento con<b>TaleBot</b></span></button>
+        <button class="m-tecno" type="button" aria-pressed="false" data-tecno="scratchjr" data-ir="conscratch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><path d="m10 8.5 4 2-4 2z" fill="currentColor"/></svg><span>Reconstruí el cuento con<b>ScratchJr</b></span></button>
+      </div>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-04/audio/voz_cuento_animado_v2.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="contalebot" hidden>
+      <div class="m-video" style="background:#fff8e6"><img src="misiones/mision-04/imagenes/talebot_cuento.gif" alt="El TaleBot recorre la alfombra pasando por las escenas del cuento" style="width:100%;height:100%;object-fit:contain;display:block"></div>
+      <button class="m-sig" type="button" data-ir="final"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>¡Ya terminé!</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-04/audio/voz_con_talebot.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="conscratch" hidden>
+      <div class="m-video"><video data-video-scratch src="misiones/mision-04/videos/scratchjr_cuento.mp4" controls playsinline preload="metadata"></video></div>
+      <button class="m-sig" type="button" data-ir="final"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>¡Ya terminé!</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-04/audio/voz_con_scratchjr.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="final" hidden>
+      <div class="m-final">
+        <img data-festejo alt="Pancho festeja">
+        <h3>¡Desafío 4 completo!</h3>
+        <button class="m-sig" type="button" data-ir="mapa">Volver a los desafíos</button>
+      </div>
+    </div>
+    <div class="m-mensaje" data-mensaje role="status" hidden></div>
+  </div>
+  <footer class="m-franja-abajo">
+    <button type="button" data-ir="atras" aria-label="Volver a la página anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Atrás</button>
+    <button type="button" data-ir="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>Desafíos</button>
+    <button type="button" data-ir="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="2"/></svg>Actividades</button>
+    <button type="button" data-ir="docentes"><img src="mapa/web/docentes.webp" alt="">Docentes</button>
+  </footer>
+  <div class="m-docentes" data-docentes role="dialog" aria-modal="true" aria-label="Materiales para docentes" hidden>
+    <div class="caja">
+      <button class="x" type="button" data-docentes-x aria-label="Cerrar">✕</button>
+      <h3>Para docentes</h3>
+      <p style="margin:0;font-size:1.5cqw;color:#666">Los materiales de este desafío se agregan pronto.</p>
+    </div>
+  </div>
+</section>
+
+<section class="escenario mision es-menu" id="mision5" aria-label="Desafío 5: Una y otra vez" hidden>
+  <header class="m-cabeza">
+    <h2 class="m-pastilla" data-titulo>UNA Y OTRA VEZ</h2>
+    <p class="m-indica" data-indica></p>
+  </header>
+  <nav class="m-lado" aria-label="Navegación del desafío">
+    <button type="button" data-ir="atras" aria-label="Volver a la página anterior"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></span>Atrás</button>
+    <button type="button" data-ir="mapa"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></span>Desafíos</button>
+    <button type="button" data-ir="menu"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="2"/><path d="m12 12 7-7M16 5h3v3"/></svg></span>Actividades</button>
+    <button type="button" data-ir="docentes"><span class="ico"><img src="mapa/web/docentes.webp" alt=""></span>Docentes</button>
+    <img class="logo-lado" src="portada/web/logo-pcia.png" alt="">
+  </nav>
+  <div class="m-cuerpo">
+    <div class="m-pag" data-p="menu">
+      <div class="m-menu">
+        <div class="m-desafios">
+          <button class="m-desafio b1" type="button" data-ir="crea"><span class="num">1</span>Crea tu personaje</button>
+          <button class="m-desafio b2" type="button" data-ir="cuantas"><span class="num">2</span>Secuencias repetidas</button>
+        </div>
+        <button class="habla habla-menu" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-05/audio/voz_menu.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+      </div>
+    </div>
+    <div class="m-pag" data-p="crea" hidden>
+      <img class="m-anim" data-anim-crea src="misiones/mision-05/imagenes/crea_personaje.gif" alt="Se crea un personaje nuevo: Bonachón" style="width:56%;aspect-ratio:16/9">
+      <button class="m-sig" type="button" data-ir="baila"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>¡Baila!</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-05/audio/voz_crea.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="baila" hidden>
+      <img class="m-anim" src="misiones/mision-05/imagenes/baile_bonachon.webp" alt="Bonachón baila: gira y da dos pasos hacia adelante" style="height:68%;aspect-ratio:1">
+      <button class="m-sig" type="button" data-ir="cuantas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Continuar</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-05/audio/voz_baila.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="cuantas" hidden>
+      <div class="m-tira" role="img" aria-label="Secuencia: izquierda, derecha, izquierda, izquierda, derecha, y tres veces: giro, adelante, adelante"><span><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M213,152.49l-66.26,66.26L213,285a11.61,11.61,0,0,0,16.42-16.41l-.06-.07-38.18-38.18h88a11.6,11.6,0,1,0,0-23.2h-88L229.37,169a11.6,11.6,0,0,0,.06-16.41l-.06-.07A11.6,11.6,0,0,0,213,152.49Z"/></svg><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M224.49,285l66.26-66.26-66.26-66.26a11.61,11.61,0,0,0-16.42,16.41l.06.07,38.18,38.18h-88a11.6,11.6,0,0,0,0,23.2h88l-38.18,38.18a11.6,11.6,0,0,0-.06,16.41l.06.07A11.6,11.6,0,0,0,224.49,285Z"/></svg></span><span><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M213,152.49l-66.26,66.26L213,285a11.61,11.61,0,0,0,16.42-16.41l-.06-.07-38.18-38.18h88a11.6,11.6,0,1,0,0-23.2h-88L229.37,169a11.6,11.6,0,0,0,.06-16.41l-.06-.07A11.6,11.6,0,0,0,213,152.49Z"/></svg></span><span><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M213,152.49l-66.26,66.26L213,285a11.61,11.61,0,0,0,16.42-16.41l-.06-.07-38.18-38.18h88a11.6,11.6,0,1,0,0-23.2h-88L229.37,169a11.6,11.6,0,0,0,.06-16.41l-.06-.07A11.6,11.6,0,0,0,213,152.49Z"/></svg><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M224.49,285l66.26-66.26-66.26-66.26a11.61,11.61,0,0,0-16.42,16.41l.06.07,38.18,38.18h-88a11.6,11.6,0,0,0,0,23.2h88l-38.18,38.18a11.6,11.6,0,0,0-.06,16.41l.06.07A11.6,11.6,0,0,0,224.49,285Z"/></svg></span><span><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M197.76,197.7a1.76,1.76,0,0,1-1.24,3H152.39a5.58,5.58,0,0,1-5.58-5.58V151a1.76,1.76,0,0,1,3-1.25l18.08,18.07a71.88,71.88,0,0,1,122.05,40.81,9,9,0,0,1-8.9,10.12h-.1a8.78,8.78,0,0,1-8.66-7.63,52.55,52.55,0,0,0-8-21.51,54,54,0,0,0-83.66-9.070Zm42,42.1L256.9,257a54,54,0,0,1-83.66-9.07,52.52,52.52,0,0,1-8-21.35,8.920,8.920,0,1,0-17.69,2.25,71.88,71.88,0,0,0,122.06,40.89l18.08,18.07a1.76,1.76,0,0,0,3-1.25V242.38a5.58,5.58,0,0,0-5.58-5.58H241A1.76,1.76,0,0,0,239.74,239.8Z"/></svg><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M213,152.49l-66.26,66.26L213,285a11.61,11.61,0,0,0,16.42-16.41l-.06-.07-38.18-38.18h88a11.6,11.6,0,1,0,0-23.2h-88L229.37,169a11.6,11.6,0,0,0,.06-16.41l-.06-.07A11.6,11.6,0,0,0,213,152.49Z" transform="rotate(90 218.75 218.75)"/></svg><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M213,152.49l-66.26,66.26L213,285a11.61,11.61,0,0,0,16.42-16.41l-.06-.07-38.18-38.18h88a11.6,11.6,0,1,0,0-23.2h-88L229.37,169a11.6,11.6,0,0,0,.06-16.41l-.06-.07A11.6,11.6,0,0,0,213,152.49Z" transform="rotate(90 218.75 218.75)"/></svg></span><span><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M197.76,197.7a1.76,1.76,0,0,1-1.24,3H152.39a5.58,5.58,0,0,1-5.58-5.58V151a1.76,1.76,0,0,1,3-1.25l18.08,18.07a71.88,71.88,0,0,1,122.05,40.81,9,9,0,0,1-8.9,10.12h-.1a8.78,8.78,0,0,1-8.66-7.63,52.55,52.55,0,0,0-8-21.51,54,54,0,0,0-83.66-9.070Zm42,42.1L256.9,257a54,54,0,0,1-83.66-9.07,52.52,52.52,0,0,1-8-21.35,8.920,8.920,0,1,0-17.69,2.25,71.88,71.88,0,0,0,122.06,40.89l18.08,18.07a1.76,1.76,0,0,0,3-1.25V242.38a5.58,5.58,0,0,0-5.58-5.58H241A1.76,1.76,0,0,0,239.74,239.8Z"/></svg><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M213,152.49l-66.26,66.26L213,285a11.61,11.61,0,0,0,16.42-16.41l-.06-.07-38.18-38.18h88a11.6,11.6,0,1,0,0-23.2h-88L229.37,169a11.6,11.6,0,0,0,.06-16.41l-.06-.07A11.6,11.6,0,0,0,213,152.49Z" transform="rotate(90 218.75 218.75)"/></svg><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M213,152.49l-66.26,66.26L213,285a11.61,11.61,0,0,0,16.42-16.41l-.06-.07-38.18-38.18h88a11.6,11.6,0,1,0,0-23.2h-88L229.37,169a11.6,11.6,0,0,0,.06-16.41l-.06-.07A11.6,11.6,0,0,0,213,152.49Z" transform="rotate(90 218.75 218.75)"/></svg></span><span><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M197.76,197.7a1.76,1.76,0,0,1-1.24,3H152.39a5.58,5.58,0,0,1-5.58-5.58V151a1.76,1.76,0,0,1,3-1.25l18.08,18.07a71.88,71.88,0,0,1,122.05,40.81,9,9,0,0,1-8.9,10.12h-.1a8.78,8.78,0,0,1-8.66-7.63,52.55,52.55,0,0,0-8-21.51,54,54,0,0,0-83.66-9.070Zm42,42.1L256.9,257a54,54,0,0,1-83.66-9.07,52.52,52.52,0,0,1-8-21.35,8.920,8.920,0,1,0-17.69,2.25,71.88,71.88,0,0,0,122.06,40.89l18.08,18.07a1.76,1.76,0,0,0,3-1.25V242.38a5.58,5.58,0,0,0-5.58-5.58H241A1.76,1.76,0,0,0,239.74,239.8Z"/></svg><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M213,152.49l-66.26,66.26L213,285a11.61,11.61,0,0,0,16.42-16.41l-.06-.07-38.18-38.18h88a11.6,11.6,0,1,0,0-23.2h-88L229.37,169a11.6,11.6,0,0,0,.06-16.41l-.06-.07A11.6,11.6,0,0,0,213,152.49Z" transform="rotate(90 218.75 218.75)"/></svg><svg viewBox="0 0 437.5 437.5"><rect x="43.75" y="43.75" width="350" height="350" rx="35" fill="#f969d7"/><path fill="#fff" d="M213,152.49l-66.26,66.26L213,285a11.61,11.61,0,0,0,16.42-16.41l-.06-.07-38.18-38.18h88a11.6,11.6,0,1,0,0-23.2h-88L229.37,169a11.6,11.6,0,0,0,.06-16.41l-.06-.07A11.6,11.6,0,0,0,213,152.49Z" transform="rotate(90 218.75 218.75)"/></svg></span></div>
+      <img class="m-anim" src="misiones/mision-05/imagenes/baile_bonachon.webp" alt="Bonachón baila: gira y da dos pasos hacia adelante" style="height:15cqw;aspect-ratio:1">
+      <div class="m-pregunta">
+        <p>¿Cuántas veces se repite la secuencia de movimiento:<br>1 giro y 2 pasos hacia adelante?</p>
+        <div class="m-numeros">
+          <button type="button" class="num-op" data-ok="0">1</button>
+          <button type="button" class="num-op" data-ok="0">2</button>
+          <button type="button" class="num-op" data-ok="1">3</button>
+          <button type="button" class="num-op" data-ok="0">4</button>
+        </div>
+      </div>
+      <button class="m-sig" type="button" data-ir="herramienta" data-sig-cuantas hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>Siguiente</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-05/audio/voz_cuantas.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="herramienta" hidden>
+      <div class="m-tecnos" style="grid-template-columns:1fr 1fr;width:60%">
+        <button class="m-tecno" type="button" data-ir="contalebot"><img src="misiones/mision-03/imagenes/talebot.png" alt=""><span><b>CON TALEBOT</b></span></button>
+        <button class="m-tecno" type="button" data-ir="conscratch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><path d="m10 8.5 4 2-4 2z" fill="currentColor"/></svg><span><b>CON SCRATCHJR</b></span></button>
+      </div>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-05/audio/voz_herramienta.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="contalebot" hidden>
+      <div class="m-video" style="width:33cqw;aspect-ratio:1"><video src="misiones/mision-05/videos/talebot_baile.mp4" poster="misiones/mision-05/videos/talebot_baile.jpg" controls playsinline preload="metadata"></video></div>
+      <button class="m-sig" type="button" data-ir="final"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>¡Ya terminé!</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-05/audio/voz_talebot.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="conscratch" hidden>
+      <div class="m-video" style="width:52cqw;aspect-ratio:1280/742"><video src="misiones/mision-05/videos/scratchjr.mp4" poster="misiones/mision-05/videos/scratchjr.jpg" controls playsinline preload="metadata"></video></div>
+      <button class="m-sig" type="button" data-ir="final"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>¡Ya terminé!</button>
+      <button class="habla habla-esquina" type="button" data-quieto="misiones/mision-04/imagenes/carpincho_quieto_t.png" data-anim="misiones/mision-04/imagenes/carpincho_habla_t.webp" data-voz="misiones/mision-05/audio/voz_scratchjr.mp3" aria-label="Tocá al carpincho para escucharlo"></button>
+    </div>
+    <div class="m-pag" data-p="final" hidden>
+      <div class="m-final">
+        <img data-festejo alt="Pancho festeja">
+        <h3>¡Desafío 5 completo!</h3>
+        <button class="m-sig" type="button" data-ir="mapa">Volver a los desafíos</button>
+      </div>
+    </div>
+    <div class="m-mensaje" data-mensaje role="status" hidden></div>
+  </div>
+  <footer class="m-franja-abajo">
+    <button type="button" data-ir="atras" aria-label="Volver a la página anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Atrás</button>
+    <button type="button" data-ir="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>Desafíos</button>
+    <button type="button" data-ir="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="2"/></svg>Actividades</button>
+    <button type="button" data-ir="docentes"><img src="mapa/web/docentes.webp" alt="">Docentes</button>
+  </footer>
+  <div class="m-docentes" data-docentes role="dialog" aria-modal="true" aria-label="Materiales para docentes" hidden>
+    <div class="caja">
+      <button class="x" type="button" data-docentes-x aria-label="Cerrar">✕</button>
+      <h3>Para docentes</h3>
+      <a href="https://drive.google.com/file/d/1Jxt0ITnSJuvTvwLGbU4ivoyjqM1J6gIn/view?usp=drive_link" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/></svg>Material para imprimir</a>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const musica = document.getElementById('musica');
+  const btnSonido = document.getElementById('sonido');
+  const presentacion = document.getElementById('presentacion');
+  const capaVideo = document.getElementById('capa-video');
+  const vistaMapa = document.getElementById('vista-mapa');
+  const portada = document.querySelector('main.escenario');
+  const fondo = document.getElementById('fondo');
+  musica.volume = 0.6;
+  const SUBS = "WEBVTT\n\n00:01.072 --> 00:03.528\nHola, estás por entrar en una reserva muy\n\n00:03.528 --> 00:05.488\nespecial. Es un lugar donde viven\n\n00:05.488 --> 00:07.488\ndistintos animales, cada uno con sus\n\n00:07.488 --> 00:10.048\ngustos y habilidades. Muy pronto, la\n\n00:10.048 --> 00:12.288\nreserva va a cumplir años y se prepara\n\n00:12.288 --> 00:14.408\nuna gran celebración. Para recibir a\n\n00:14.408 --> 00:16.328\nquienes vengan, los organizadores\n\n00:16.328 --> 00:18.248\nprepararon cinco actividades. Un\n\n00:18.248 --> 00:20.408\nescenario de música y movimiento, un\n\n00:20.408 --> 00:22.808\nfogón de cuentos e historias, un gran\n\n00:22.808 --> 00:25.288\nrecorrido de juegos, un rincón de pistas\n\n00:25.288 --> 00:28.528\ny enigmas y una estación de exploradores.\n\n00:28.528 --> 00:31.768\nLolo, Pancho, Nuri y Antonia viven en la\n\n00:31.768 --> 00:34.728\nreserva y quieren participar. Y Daí, una\n\n00:34.728 --> 00:37.048\ncastora que vive lejos, también quiere\n\n00:37.048 --> 00:38.848\nsumarse a la fiesta. Pero hay un\n\n00:38.848 --> 00:41.368\nproblema, no logran ponerse de acuerdo\n\n00:41.368 --> 00:43.568\nsobre qué actividad debería hacer cada\n\n00:43.568 --> 00:46.288\nuno. Por eso, necesitan tu ayuda. A lo\n\n00:46.288 --> 00:48.728\nlargo de dos misiones vas a conocerlos\n\n00:48.728 --> 00:51.048\nmejor, jugar con ellos y resolver\n\n00:51.048 --> 00:53.848\ndesafíos. En cada misión vas a descubrir\n\n00:53.848 --> 00:56.208\npistas sobre lo que les gusta hacer, lo\n\n00:56.208 --> 00:57.710\nque saben y sus fortalezas.\n\n00:57.710 --> 00:59.995\nfinal tendrás un desafío final, decidir\n\n00:59.995 --> 01:02.475\ncuál de las cinco actividades es la mejor\n\n01:02.475 --> 01:04.915\npara cada uno. ¿Te animás a conocerlos y\n\n01:04.915 --> 01:06.635\nayudarlos a encontrar su lugar en la\n\n01:06.635 --> 01:07.475\ncelebración?\n\n01:07.835 --> 01:09.435\nEntonces comienza la aventura.\n";
+  document.getElementById('subs').src = URL.createObjectURL(new Blob([SUBS], { type: 'text/vtt' }));
+
+  let silenciado = false;
+  let enPresentacion = false;
+
+  function pintarBoton() {
+    btnSonido.setAttribute('aria-pressed', silenciado ? 'true' : 'false');
+    btnSonido.setAttribute('aria-label', silenciado ? 'Activar música' : 'Silenciar música');
+    btnSonido.classList.toggle('espera', !silenciado && musica.paused && !enPresentacion);
+  }
+
+  function intentarMusica() {
+    if (silenciado || enPresentacion) { pintarBoton(); return Promise.resolve(); }
+    const p = musica.play();
+    return (p || Promise.resolve()).then(pintarBoton, pintarBoton);
+  }
+
+  // 1) Intento de arrancar apenas se abre
+  intentarMusica();
+
+  // 2) Si el navegador lo bloqueó, arranca con el primer toque, clic o tecla en cualquier parte
+  function primerToque(ev) {
+    if (ev.target.closest && ev.target.closest('#sonido')) return;
+    if (musica.paused && !silenciado && !enPresentacion) intentarMusica();
+  }
+  ['pointerdown', 'pointerup', 'mousedown', 'click', 'touchend', 'keydown'].forEach(t =>
+    document.addEventListener(t, primerToque, { capture: true, passive: true }));
+
+  // Botón de sonido: si la música todavía no pudo arrancar, el primer toque la enciende;
+  // si ya suena, la silencia
+  btnSonido.addEventListener('click', () => {
+    if (!silenciado && musica.paused && !enPresentacion) { intentarMusica(); return; }
+    silenciado = !silenciado;
+    if (silenciado) { musica.pause(); presentacion.muted = true; }
+    else { presentacion.muted = false; intentarMusica(); }
+    pintarBoton();
+  });
+
+  // Presentación: la música se pausa y vuelve al cerrar
+  function abrirVideo() {
+    enPresentacion = true;
+    document.body.classList.add('viendo');
+    musica.pause();
+    capaVideo.hidden = false;
+    presentacion.muted = silenciado;
+    const pista = presentacion.textTracks[0];
+    if (pista) pista.mode = 'disabled'; // los subtítulos eran del video anterior
+    finalVideo.hidden = true;
+    // el cartel ya viene dentro del video nuevo
+    logoVideo.classList.add('destacado');
+    presentacion.currentTime = 0;
+    const p = presentacion.play();
+    if (p) p.catch(() => { presentacion.muted = true; presentacion.play().catch(() => {}); });
+    pintarBoton();
+  }
+  const finalVideo = document.getElementById('final-video');
+  function cerrarVideo(volverFoco = true) {
+    presentacion.pause();
+    capaVideo.hidden = true;
+    finalVideo.hidden = true;
+    document.body.classList.remove('viendo');
+    enPresentacion = false;
+    intentarMusica();
+    if (volverFoco) document.getElementById('ver').focus();
+  }
+  // ---------- Mapa de misiones ----------
+  // Enlaces provisorios a las misiones que ya existen en Genially (se reemplazan al programarlas)
+  const MISIONES = [
+    { n: 1, interna: true },
+    { n: 2, interna: true },
+    { n: 3, interna: true },
+    { n: 4, interna: true },
+    { n: 5, interna: true },
+    { n: 6 }, { n: 7 },
+    { n: 8 }, { n: 9 }, { n: 10 },
+    { n: 11 }, { n: 12 }
+  ];
+  let hechas = [];
+  try { hechas = JSON.parse(localStorage.getItem('ap-misiones') || '[]'); } catch (e) {}
+  const tarjetas = document.getElementById('tarjetas');
+  const aviso = document.getElementById('aviso');
+  const tilde = '<span class="sello" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>';
+  MISIONES.forEach((m, i) => {
+    const el = document.createElement(m.enlace ? 'a' : 'button');
+    el.className = 'tarjeta';
+    el.dataset.n = m.n;
+    el.style.animationDelay = (i * 0.04) + 's';
+    if (m.enlace) { el.href = m.enlace; el.target = '_blank'; el.rel = 'noopener'; }
+    else el.type = 'button';
+    el.innerHTML = '<img src="mapa/web/m' + String(m.n).padStart(2, '0') + '.webp" alt="">' + tilde;
+    el.addEventListener('click', ev => {
+      if (m.interna) { ev.preventDefault(); window['abrirMision' + m.n](); return; }
+      if (!m.enlace) { ev.preventDefault(); mostrarAviso('El desafío ' + m.n + ' llega muy pronto'); }
+    });
+    tarjetas.appendChild(el);
+  });
+  function pintarMisiones() {
+    const siguiente = MISIONES.find(m => !hechas.includes(m.n));
+    tarjetas.querySelectorAll('.tarjeta').forEach(el => {
+      const n = +el.dataset.n, hecha = hechas.includes(n);
+      el.classList.toggle('hecha', hecha);
+      el.classList.toggle('siguiente', !!siguiente && siguiente.n === n);
+      el.setAttribute('aria-label', 'Desafío ' + n + (hecha ? ', completada' : '') + (siguiente && siguiente.n === n ? ', la que sigue' : ''));
+    });
+    document.getElementById('progreso').textContent = hechas.length + ' de 12';
+  }
+  // Para usar desde cada misión cuando esté programada: marca la misión como completada
+  window.completarMision = n => {
+    if (!hechas.includes(n)) hechas.push(n);
+    try { localStorage.setItem('ap-misiones', JSON.stringify(hechas)); } catch (e) {}
+    pintarMisiones();
+  };
+  let avisoTimer;
+  function mostrarAviso(texto) {
+    aviso.textContent = texto; aviso.hidden = false;
+    clearTimeout(avisoTimer); avisoTimer = setTimeout(() => { aviso.hidden = true; }, 2200);
+  }
+  const fondoMapa = document.getElementById('fondo-mapa');
+  function abrirMapa() {
+    pintarMisiones();
+    portada.hidden = true;
+    vistaMapa.hidden = false;
+    fondo.pause();
+    if (!quieto.matches) fondoMapa.play().catch(() => {});
+    const sig = tarjetas.querySelector('.siguiente') || tarjetas.querySelector('.tarjeta');
+    if (sig) sig.focus({ preventScroll: true });
+  }
+  function volverPortada() {
+    vistaMapa.hidden = true;
+    fondoMapa.pause();
+    portada.hidden = false;
+    if (!quieto.matches) fondo.play().catch(() => {});
+    document.getElementById('jugar').focus();
+  }
+  document.getElementById('ir-inicio').addEventListener('click', volverPortada);
+  document.getElementById('ir-docentes').addEventListener('click', () => mostrarAviso('La sección para docentes llega muy pronto'));
+  document.getElementById('ver').addEventListener('click', abrirVideo);
+  document.getElementById('cerrar-video').addEventListener('click', () => cerrarVideo());
+  presentacion.addEventListener('ended', () => {
+    finalVideo.hidden = false;
+    document.getElementById('cerrar-video').hidden = true;
+    document.getElementById('jugar-final').focus();
+  });
+  // Título solo en la escena inicial (animales sobre el cielo), luego se va
+  const tituloVideo = document.getElementById('titulo-video');
+  const logoVideo = document.getElementById('logo-video');
+  const FIN_TITULO = 3.0;
+  function seguirTitulo() {
+    if (capaVideo.hidden) return;
+    const inicio = presentacion.currentTime < FIN_TITULO && !presentacion.ended;
+    logoVideo.classList.toggle('destacado', inicio);
+    if (presentacion.currentTime < FIN_TITULO + 0.5) requestAnimationFrame(seguirTitulo);
+  }
+  presentacion.addEventListener('playing', () => requestAnimationFrame(seguirTitulo));
+  presentacion.addEventListener('play', () => { finalVideo.hidden = true; document.getElementById('cerrar-video').hidden = false; });
+  document.getElementById('jugar-final').addEventListener('click', () => { cerrarVideo(false); abrirMapa(); });
+
+  document.getElementById('jugar').addEventListener('click', abrirMapa);
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!capaVideo.hidden) cerrarVideo();
+    else if (!vistaMapa.hidden) volverPortada();
+  });
+
+  musica.addEventListener('play', pintarBoton);
+  musica.addEventListener('pause', pintarBoton);
+  pintarBoton();
+
+  // ---------- Misión 1: Orden en la secuencia ----------
+  const m1 = document.getElementById('mision1');
+  const M1 = 'misiones/mision-01/';
+  const m1Titulo = document.getElementById('m1-titulo');
+  const m1Indica = document.getElementById('m1-indica');
+  const m1Msg = document.getElementById('m1-mensaje');
+  const PAGS = {
+    menu: ['ORDEN EN LA SECUENCIA', 'Selecciona una de las actividades'],
+    orden: ['¿CUÁL ES EL ORDEN?', 'Baila y repite los movimientos en el orden correcto. Presiona el botón <em>Siguiente</em> para continuar.'],
+    correcto: ['¿ES CORRECTO?', 'Presiona uno de los botones amarillos para responder si el orden de las animaciones es o no correcto.'],
+    ordena: ['ORDENA LA SECUENCIA', 'Arrastra las imágenes para representar el orden correcto de los movimientos.'],
+    final: ['DESAFÍO 1', '¡Completaste todas las actividades de este desafío!']
+  };
+  let m1Hechos = [];
+  try { m1Hechos = JSON.parse(localStorage.getItem('ap-m1-desafios') || '[]'); } catch (e) {}
+  function marcarDesafio(n) {
+    if (!m1Hechos.includes(n)) m1Hechos.push(n);
+    try { localStorage.setItem('ap-m1-desafios', JSON.stringify(m1Hechos)); } catch (e) {}
+    const acts = [...m1.querySelectorAll('.m-desafio, .m-act')];
+    acts.forEach((b, i) => b.classList.toggle('hecho', m1Hechos.includes(i + 1)));
+    const sig = acts.findIndex((b, i) => !m1Hechos.includes(i + 1));
+    acts.forEach((b, i) => b.classList.toggle('siguiente', i === sig));
+  }
+  marcarDesafio(0);
+
+  // Sonidos de la misión (respetan el botón de silencio)
+  const sfx = new Audio();
+  function callarTodo() {
+    sfx.pause();
+    m1.querySelectorAll('video').forEach(v => { if (v.id === 'm1-baile') v.pause(); else v.muted = true; });
+    pajaritos.forEach(p => p.callar());
+  }
+  function sonar(archivo) {
+    pajaritos.forEach(p => p.callar());
+    if (silenciado) return;
+    sfx.src = M1 + 'audio/' + archivo; sfx.currentTime = 0;
+    sfx.play().catch(() => {});
+  }
+  let msgTimer;
+  function mensaje(texto, detalle, tipo) {
+    m1Msg.className = 'm-mensaje ' + tipo;
+    m1Msg.innerHTML = texto + (detalle ? '<small>' + detalle + '</small>' : '');
+    m1Msg.hidden = false;
+    clearTimeout(msgTimer); msgTimer = setTimeout(() => { m1Msg.hidden = true; }, 2600);
+  }
+
+  // Pajaritos que hablan: al entrar a la página hablan solos; tocándolos repiten
+  const pajaritos = [...m1.querySelectorAll('.habla')].map(el => {
+    const img = document.createElement('img');
+    img.src = el.dataset.quieto; img.alt = '';
+    const voz = new Audio(el.dataset.voz); voz.preload = 'none';
+    el.append(img);
+    
+    const quieto = () => { img.src = el.dataset.quieto; el.classList.remove('hablando'); };
+    const p = {
+      el,
+      hablar() {
+        if (silenciado) return;
+        pajaritos.forEach(o => { if (o !== p) o.callar(); });
+        sfx.pause();
+        voz.currentTime = 0;
+        img.src = el.dataset.anim + '#' + Date.now();
+        el.classList.add('hablando');
+        voz.play().catch(quieto);
+      },
+      callar() { voz.pause(); quieto(); }
+    };
+    voz.addEventListener('ended', quieto);
+    el.addEventListener('click', () => p.hablar());
+    return p;
+  });
+
+  // Navegación entre páginas de la misión
+  let m1Pagina = 'menu';
+  let m1Historial = [];
+  function irM1(p, volviendo) {
+    if (p === 'atras') {
+      if (!m1Historial.length) { salirMision1(); return; }
+      irM1(m1Historial.pop(), true); return;
+    }
+    if (p === 'mapa') { salirMision1(); return; }
+    if (p !== 'docentes' && !volviendo && p !== m1Pagina && !m1.hidden && m1Pagina) m1Historial.push(m1Pagina);
+    if (p === 'docentes') { document.getElementById('m1-docentes').hidden = false; document.getElementById('m1-docentes-x').focus(); return; }
+    callarTodo();
+    m1Msg.hidden = true;
+    m1Pagina = p;
+    m1.classList.toggle('es-menu', p === 'menu');
+    m1.querySelectorAll('.m-pag').forEach(el => { el.hidden = el.dataset.p !== p; });
+    m1Titulo.textContent = PAGS[p][0];
+    m1Indica.innerHTML = PAGS[p][1];
+    const pag = m1.querySelector('.m-pag[data-p="' + p + '"]');
+    const pj = pajaritos.find(o => pag.contains(o.el));
+    if (pj) setTimeout(() => pj.hablar(), 350);
+    if (p === 'orden') prepararBaile();
+    if (p === 'correcto') prepararCorrecto();
+    if (p === 'ordena') prepararOrdena();
+    if (p === 'final') {
+      document.getElementById('m1-festejo').src = M1 + 'imagenes/festejo.gif#' + Date.now();
+      sonar('desafio_logrado.mp3');
+      completarMision(1);
+    }
+  }
+  m1.addEventListener('click', e => {
+    const b = e.target.closest('[data-ir]');
+    if (!b || !m1.contains(b)) return;
+    if (b.closest('#m1-sig2, #m1-sig3') === null && b.dataset.ir === 'correcto' && m1Pagina === 'orden') marcarDesafio(1);
+    irM1(b.dataset.ir);
+  });
+  document.getElementById('m1-docentes-x').addEventListener('click', () => { document.getElementById('m1-docentes').hidden = true; });
+  // Guía docente: ver las páginas dentro del juego
+  const visor1 = document.getElementById('m1-visor');
+  document.getElementById('m1-ver-guia').addEventListener('click', () => { visor1.hidden = false; visor1.querySelector('.visor-paginas').scrollTop = 0; document.getElementById('m1-visor-cerrar').focus(); });
+  document.getElementById('m1-visor-cerrar').addEventListener('click', () => { visor1.hidden = true; });
+  // Descargar la guía: dentro de Claude se usa el permiso de descargas; publicada en la web, el enlace funciona solo
+  let bajadas = null;
+  if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { bajadas = d; }).catch(() => {});
+  document.querySelectorAll('[data-descargar]').forEach(a => a.addEventListener('click', async ev => {
+    if (!bajadas) return;
+    ev.preventDefault();
+    try {
+      const blob = await fetch(a.getAttribute('href')).then(r => r.blob());
+      await bajadas.save({ filename: a.getAttribute('download'), data: blob });
+    } catch (e) {}
+  }));
+  document.getElementById('m1-docentes').addEventListener('click', e => { if (e.target.id === 'm1-docentes') e.target.hidden = true; });
+
+  // 1. ¿Cuál es el orden?
+  const baile = document.getElementById('m1-baile');
+  function prepararBaile() { baile.pause(); baile.currentTime = 0; baile.muted = silenciado; }
+  baile.addEventListener('play', () => { pajaritos.forEach(p => p.callar()); baile.muted = silenciado; });
+  baile.addEventListener('ended', () => marcarDesafio(1));
+
+  // 2. ¿Es correcto?  (se muestra plumas, colita, salta, pico: NO es correcto)
+  const ANIM = {
+    pico: { vid: 'mueve_el_pico', img: 'carta_mueve_el_pico', txt: 'Mueve el pico' },
+    plumas: { vid: 'mueve_las_alas', img: 'carta_mueve_las_alas', txt: 'Mueve las plumas' },
+    colita: { vid: 'mueve_la_colita', img: 'carta_mueve_la_colita', txt: 'Mueve la colita' },
+    salta: { vid: 'da_saltitos', img: 'carta_da_saltitos', txt: 'Salta' }
+  };
+  const fila = document.getElementById('m1-fila');
+  ['plumas', 'colita', 'salta', 'pico'].forEach((k, i) => {
+    const t = document.createElement('div');
+    t.className = 'm-tile';
+    t.innerHTML = '<span class="num-amarillo">' + (i + 1) + '</span>' +
+      '<button class="marco" type="button" aria-label="Ver y escuchar: ' + ANIM[k].txt + '"><video src="' + M1 + 'videos/' + ANIM[k].vid + '.mp4" muted loop playsinline preload="auto"></video></button>' +
+      '<span class="etiqueta">' + ANIM[k].txt + '</span>';
+    const v = t.querySelector('video');
+    t.querySelector('.marco').addEventListener('click', () => {
+      pajaritos.forEach(p => p.callar());
+      fila.querySelectorAll('video').forEach(o => { o.muted = true; });
+      v.currentTime = 0; v.muted = silenciado; v.play().catch(() => {});
+    });
+    fila.appendChild(t);
+  });
+  function prepararCorrecto() {
+    document.getElementById('m1-sig2').hidden = !m1Hechos.includes(2);
+    fila.querySelectorAll('video').forEach(v => { v.muted = true; v.currentTime = 0; if (!quieto.matches) v.play().catch(() => {}); });
+  }
+  document.getElementById('m1-si').addEventListener('click', () => {
+    sonar('si_vuelve_a_escuchar.mp3');
+    mensaje('¡Volvé a intentarlo!', 'Mirá de nuevo el baile del pajarito.', 'mal');
+  });
+  document.getElementById('m1-no').addEventListener('click', () => {
+    sonar('no_bien_hecho.mp3');
+    mensaje('¡Bien hecho!', 'Ese no es el orden del baile.', 'ok');
+    marcarDesafio(2);
+    document.getElementById('m1-sig2').hidden = false;
+  });
+
+  // 3. Ordena: arrastrar (o tocar carta y después casilla)
+  const CORRECTO = ['pico', 'plumas', 'colita', 'salta'];
+  const cartasEl = document.getElementById('m1-cartas');
+  const casillasEl = document.getElementById('m1-casillas');
+  const casas = {};
+  ['salta', 'colita', 'pico', 'plumas'].forEach(k => {
+    const casa = document.createElement('div');
+    casa.style.display = 'grid'; casa.style.placeItems = 'center';
+    const c = document.createElement('button');
+    c.type = 'button'; c.className = 'm-carta'; c.dataset.k = k;
+    c.innerHTML = '<img src="' + M1 + 'imagenes/' + ANIM[k].img + '.png" alt=""><span>' + ANIM[k].txt + '</span>';
+    c.setAttribute('aria-label', ANIM[k].txt);
+    casa.appendChild(c); casas[k] = casa; cartasEl.appendChild(casa);
+  });
+  const huecos = [1, 2, 3, 4].map(n => {
+    const cas = document.createElement('div');
+    cas.className = 'm-casilla';
+    cas.innerHTML = '<div class="hueco" role="button" tabindex="0" aria-label="Casilla ' + n + '"></div><span class="num-amarillo">' + n + '</span>';
+    casillasEl.appendChild(cas);
+    return cas;
+  });
+  let elegida = null, resuelto = false;
+  function elegir(c) {
+    if (elegida) elegida.classList.remove('elegida');
+    elegida = c; if (c) c.classList.add('elegida');
+  }
+  function volverACasa(c) { casas[c.dataset.k].appendChild(c); }
+  function colocar(c, cas) {
+    if (resuelto) return;
+    const hueco = cas.querySelector('.hueco');
+    const otra = hueco.querySelector('.m-carta');
+    const origen = c.parentElement;
+    if (otra && otra !== c) {
+      if (origen.classList.contains('hueco')) origen.appendChild(otra); else volverACasa(otra);
+    }
+    hueco.appendChild(c);
+    elegir(null);
+    revisar();
+  }
+  function prepararOrdena() {
+    resuelto = false;
+    huecos.forEach(h => h.classList.remove('bien', 'mal'));
+    Object.keys(casas).forEach(k => volverACasa(cartasEl.querySelector('[data-k="' + k + '"]') || m1.querySelector('.m-carta[data-k="' + k + '"]')));
+    document.getElementById('m1-sig3').hidden = true;
+    elegir(null);
+  }
+  function revisar() {
+    const puestas = huecos.map(h => h.querySelector('.m-carta'));
+    if (puestas.some(c => !c)) return;
+    const bien = puestas.map((c, i) => c.dataset.k === CORRECTO[i]);
+    if (bien.every(Boolean)) {
+      resuelto = true;
+      huecos.forEach(h => h.classList.add('bien'));
+      sonar('lo_conseguiste.mp3');
+      mensaje('¡Lo conseguiste!', 'Ese es el orden del baile.', 'ok');
+      marcarDesafio(3);
+      document.getElementById('m1-sig3').hidden = false;
+    } else {
+      sonar('vuelve_a_intentarlo.mp3');
+      mensaje('¡Volvé a intentarlo!', 'Las que no van en su lugar vuelven arriba.', 'mal');
+      huecos.forEach((h, i) => { if (!bien[i]) h.classList.add('mal'); });
+      setTimeout(() => {
+        huecos.forEach((h, i) => { h.classList.remove('mal'); if (!bien[i]) volverACasa(puestas[i]); });
+      }, 1300);
+    }
+  }
+  // Arrastre con mouse o dedo
+  let arrastre = null;
+  m1.querySelector('.m-ordena').addEventListener('pointerdown', e => {
+    const c = e.target.closest('.m-carta');
+    if (!c || resuelto) return;
+    arrastre = { c, x: e.clientX, y: e.clientY, mov: false, fantasma: null };
+    c.setPointerCapture(e.pointerId);
+  });
+  m1.querySelector('.m-ordena').addEventListener('pointermove', e => {
+    if (!arrastre) return;
+    const dx = e.clientX - arrastre.x, dy = e.clientY - arrastre.y;
+    if (!arrastre.mov && Math.hypot(dx, dy) > 6) {
+      arrastre.mov = true;
+      const r = arrastre.c.getBoundingClientRect();
+      const f = arrastre.c.cloneNode(true);
+      f.classList.add('arrastrando'); f.style.width = r.width + 'px';
+      f.style.left = r.left + 'px'; f.style.top = r.top + 'px';
+      document.body.appendChild(f);
+      arrastre.fantasma = f; arrastre.ox = e.clientX - r.left; arrastre.oy = e.clientY - r.top;
+      arrastre.c.style.opacity = '.3';
+    }
+    if (arrastre.mov) {
+      arrastre.fantasma.style.left = (e.clientX - arrastre.ox) + 'px';
+      arrastre.fantasma.style.top = (e.clientY - arrastre.oy) + 'px';
+      const debajo = document.elementFromPoint(e.clientX, e.clientY);
+      huecos.forEach(h => h.querySelector('.hueco').classList.toggle('sobre', !!debajo && h.contains(debajo)));
+    }
+  });
+  function soltar(e) {
+    if (!arrastre) return;
+    const { c, mov, fantasma } = arrastre;
+    arrastre = null;
+    huecos.forEach(h => h.querySelector('.hueco').classList.remove('sobre'));
+    if (!mov) { elegir(elegida === c ? null : c); return; }
+    fantasma.remove(); c.style.opacity = '';
+    const debajo = document.elementFromPoint(e.clientX, e.clientY);
+    const cas = debajo && huecos.find(h => h.contains(debajo));
+    if (cas) colocar(c, cas);
+    else if (c.parentElement.classList.contains('hueco')) volverACasa(c);
+  }
+  m1.querySelector('.m-ordena').addEventListener('pointerup', soltar);
+  m1.querySelector('.m-ordena').addEventListener('pointercancel', soltar);
+  huecos.forEach(h => h.querySelector('.hueco').addEventListener('click', e => {
+    if (elegida && !e.target.closest('.m-carta')) colocar(elegida, h);
+  }));
+
+  // Entrar y salir de la misión
+  function abrirMision1() {
+    enPresentacion = true; musica.pause(); pintarBoton();
+    vistaMapa.hidden = true; fondoMapa.pause();
+    m1.hidden = false;
+    m1Pagina = null; m1Historial = [];
+    irM1('menu');
+  }
+  function salirMision1() {
+    callarTodo();
+    document.getElementById('m1-docentes').hidden = true;
+    document.getElementById('m1-visor').hidden = true;
+    m1.hidden = true;
+    enPresentacion = false;
+    abrirMapa();
+    intentarMusica();
+  }
+  btnSonido.addEventListener('click', () => { if (silenciado && !m1.hidden) callarTodo(); });
+  window.abrirMision1 = abrirMision1;
+
+  // ---------- Motor genérico para misiones (se usa desde la misión 2) ----------
+  function montarMision(sec, cfg) {
+    const q = s => sec.querySelector(s);
+    const msgEl = q('[data-mensaje]');
+    const sfx = new Audio();
+    let hechos = [];
+    try { hechos = JSON.parse(localStorage.getItem('ap-m' + cfg.n + '-desafios') || '[]'); } catch (e) {}
+    const api = {};
+    api.marcar = d => {
+      if (!hechos.includes(d)) hechos.push(d);
+      try { localStorage.setItem('ap-m' + cfg.n + '-desafios', JSON.stringify(hechos)); } catch (e) {}
+      sec.querySelectorAll('.m-desafio').forEach((b, i) => b.classList.toggle('hecho', hechos.includes(i + 1)));
+    };
+    api.marcar(0);
+    api.sonar = archivo => {
+      pajaros.forEach(p => p.callar());
+      if (silenciado) return;
+      sfx.src = archivo; sfx.currentTime = 0; sfx.play().catch(() => {});
+    };
+    let t;
+    api.mensaje = (texto, detalle, tipo) => {
+      msgEl.className = 'm-mensaje ' + tipo;
+      msgEl.innerHTML = texto + (detalle ? '<small>' + detalle + '</small>' : '');
+      msgEl.hidden = false; clearTimeout(t); t = setTimeout(() => { msgEl.hidden = true; }, 2600);
+    };
+    const pajaros = [...sec.querySelectorAll('.habla')].map(el => {
+      const img = document.createElement('img'); img.src = el.dataset.quieto; img.alt = '';
+      const voz = new Audio(el.dataset.voz); voz.preload = 'none';
+      el.append(img);
+      
+      const quieto = () => { img.src = el.dataset.quieto; el.classList.remove('hablando'); };
+      const p = {
+        el,
+        hablar() {
+          if (silenciado) return;
+          pajaros.forEach(o => { if (o !== p) o.callar(); }); sfx.pause();
+          voz.currentTime = 0; img.src = el.dataset.anim + '#' + Date.now(); el.classList.add('hablando');
+          voz.play().catch(quieto);
+        },
+        callar() { voz.pause(); quieto(); }
+      };
+      voz.addEventListener('ended', quieto);
+      el.addEventListener('click', () => p.hablar());
+      return p;
+    });
+    api.callarTodo = () => {
+      sfx.pause(); pajaros.forEach(p => p.callar());
+      sec.querySelectorAll('video').forEach(v => v.pause());
+      if (cfg.alSalirPagina) cfg.alSalirPagina();
+    };
+    let pagina = 'menu';
+    let historial = [];
+    api.ir = (p, volviendo) => {
+      if (p === 'atras') {
+        if (!historial.length) { api.salir(); return; }
+        api.ir(historial.pop(), true); return;
+      }
+      if (p === 'mapa') { api.salir(); return; }
+      if (p !== 'docentes' && !volviendo && pagina && p !== pagina) historial.push(pagina);
+      if (p === 'docentes') { q('[data-docentes]').hidden = false; q('[data-docentes-x]').focus(); return; }
+      api.callarTodo(); msgEl.hidden = true; pagina = p;
+      sec.classList.toggle('es-menu', p === 'menu');
+      sec.querySelectorAll('.m-pag').forEach(el => { el.hidden = el.dataset.p !== p; });
+      q('[data-titulo]').textContent = cfg.paginas[p][0];
+      q('[data-indica]').innerHTML = cfg.paginas[p][1];
+      const pag = sec.querySelector('.m-pag[data-p="' + p + '"]');
+      const pj = pajaros.find(o => pag.contains(o.el));
+      if (pj) setTimeout(() => pj.hablar(), 350);
+      if (p === 'final') {
+        q('[data-festejo]').src = (cfg.festejo || 'misiones/mision-01/imagenes/festejo.gif') + '#' + Date.now();
+        api.sonar('misiones/mision-01/audio/desafio_logrado.mp3');
+        completarMision(cfg.n);
+      }
+      if (cfg.alEntrar && cfg.alEntrar[p]) cfg.alEntrar[p]();
+    };
+    sec.addEventListener('click', e => {
+      const b = e.target.closest('[data-ir]');
+      if (b && sec.contains(b)) api.ir(b.dataset.ir);
+    });
+    q('[data-docentes-x]').addEventListener('click', () => { q('[data-docentes]').hidden = true; });
+    q('[data-docentes]').addEventListener('click', e => { if (e.target === q('[data-docentes]')) e.target.hidden = true; });
+    api.abrir = () => {
+      enPresentacion = true; musica.pause(); pintarBoton();
+      vistaMapa.hidden = true; fondoMapa.pause();
+      sec.hidden = false; pagina = null; historial = []; api.ir('menu');
+    };
+    api.salir = () => {
+      api.callarTodo(); q('[data-docentes]').hidden = true; sec.hidden = true;
+      enPresentacion = false; abrirMapa(); intentarMusica();
+    };
+    btnSonido.addEventListener('click', () => { if (silenciado && !sec.hidden) api.callarTodo(); });
+    return api;
+  }
+
+  // Arrastrar fichas a casilleros (mouse, dedo, o tocar ficha y después casillero)
+  function montarArrastre(zona, fichaSel, huecos, alCompletar) {
+    let elegida = null, arr = null, bloqueado = false;
+    const casas = new Map();
+    zona.querySelectorAll(fichaSel).forEach(f => casas.set(f, f.parentElement));
+    const elegir = f => { if (elegida) elegida.classList.remove('elegida'); elegida = f; if (f) f.classList.add('elegida'); };
+    const aCasa = f => casas.get(f).appendChild(f);
+    const hDe = el => huecos.find(h => h.contains(el));
+    function colocar(f, cont) {
+      if (bloqueado) return;
+      const hueco = cont.querySelector('.hueco');
+      const otra = hueco.querySelector(fichaSel);
+      const origen = f.parentElement;
+      if (otra && otra !== f) { if (origen.classList.contains('hueco')) origen.appendChild(otra); else aCasa(otra); }
+      hueco.appendChild(f); elegir(null);
+      const puestas = huecos.map(h => h.querySelector(fichaSel));
+      if (puestas.every(Boolean)) alCompletar(puestas);
+    }
+    zona.addEventListener('pointerdown', e => {
+      const f = e.target.closest(fichaSel); if (!f || bloqueado) return;
+      arr = { f, x: e.clientX, y: e.clientY, mov: false }; f.setPointerCapture(e.pointerId);
+    });
+    zona.addEventListener('pointermove', e => {
+      if (!arr) return;
+      if (!arr.mov && Math.hypot(e.clientX - arr.x, e.clientY - arr.y) > 6) {
+        arr.mov = true;
+        const r = arr.f.getBoundingClientRect();
+        const g = arr.f.cloneNode(true); g.classList.add('arrastrando');
+        g.style.width = r.width + 'px'; g.style.height = r.height + 'px'; g.style.left = r.left + 'px'; g.style.top = r.top + 'px';
+        document.body.appendChild(g); arr.g = g; arr.ox = e.clientX - r.left; arr.oy = e.clientY - r.top; arr.f.style.opacity = '.3';
+      }
+      if (arr.mov) {
+        arr.g.style.left = (e.clientX - arr.ox) + 'px'; arr.g.style.top = (e.clientY - arr.oy) + 'px';
+        const d = document.elementFromPoint(e.clientX, e.clientY);
+        huecos.forEach(h => h.querySelector('.hueco').classList.toggle('sobre', !!d && h.contains(d)));
+      }
+    });
+    const soltar = e => {
+      if (!arr) return;
+      const { f, mov, g } = arr; arr = null;
+      huecos.forEach(h => h.querySelector('.hueco').classList.remove('sobre'));
+      if (!mov) { elegir(elegida === f ? null : f); return; }
+      g.remove(); f.style.opacity = '';
+      const d = document.elementFromPoint(e.clientX, e.clientY);
+      const h = d && hDe(d);
+      if (h) colocar(f, h); else if (f.parentElement.classList.contains('hueco')) aCasa(f);
+    };
+    zona.addEventListener('pointerup', soltar);
+    zona.addEventListener('pointercancel', soltar);
+    huecos.forEach(h => h.querySelector('.hueco').addEventListener('click', e => {
+      if (elegida && !e.target.closest(fichaSel)) colocar(elegida, h);
+    }));
+    return {
+      reiniciar() { bloqueado = false; casas.forEach((c, f) => c.appendChild(f)); elegir(null); },
+      bloquear(v) { bloqueado = v; },
+      devolver(f) { aCasa(f); }
+    };
+  }
+
+  // ---------- Misión 2: Hablar con símbolos ----------
+  const sec2 = document.getElementById('mision2');
+  const M2 = 'misiones/mision-02/';
+  const FLECHA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>';
+  const GIRO = { derecha: 0, abajo: 90, izquierda: 180, arriba: 270 };
+  const colFlechas = sec2.querySelector('[data-cartas]');
+  ['derecha', 'abajo', 'izquierda', 'arriba'].forEach(k => {
+    const casa = document.createElement('div'); casa.className = 'casa-flecha';
+    const f = document.createElement('button');
+    f.type = 'button'; f.className = 'flecha'; f.dataset.k = k; f.setAttribute('aria-label', 'Flecha hacia ' + k);
+    f.innerHTML = FLECHA; f.querySelector('svg').style.transform = 'rotate(' + GIRO[k] + 'deg)';
+    casa.appendChild(f); colFlechas.appendChild(casa);
+  });
+  const palabras = ['derecha', 'arriba', 'izquierda', 'abajo'];
+  const contPal = sec2.querySelector('[data-huecos]');
+  const huecos2 = palabras.map(w => {
+    const d = document.createElement('div'); d.className = 'm-palabra'; d.dataset.k = w;
+    d.innerHTML = '<div class="hueco" role="button" tabindex="0" aria-label="Cuadro de ' + w + '"></div>' +
+      '<button class="decir" type="button" aria-label="Escuchar: ' + w + '"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' + w.toUpperCase() + '</button>';
+    d.querySelector('.decir').addEventListener('click', () => m2.sonar(M2 + 'audio/' + w + '.mp3'));
+    contPal.appendChild(d); return d;
+  });
+  const arrastre2 = montarArrastre(sec2.querySelector('.m-flechas'), '.flecha', huecos2, puestas => {
+    const bien = puestas.map((f, i) => f.dataset.k === palabras[i]);
+    if (bien.every(Boolean)) {
+      arrastre2.bloquear(true);
+      huecos2.forEach(h => h.classList.add('bien'));
+      m2.sonar('misiones/mision-01/audio/lo_conseguiste.mp3');
+      m2.mensaje('¡Lo conseguiste!', 'Cada flecha está con su palabra.', 'ok');
+      m2.marcar(1);
+    } else {
+      m2.sonar('misiones/mision-01/audio/vuelve_a_intentarlo.mp3');
+      m2.mensaje('¡Volvé a intentarlo!', 'Las flechas que no van ahí vuelven a su lugar.', 'mal');
+      huecos2.forEach((h, i) => { if (!bien[i]) h.classList.add('mal'); });
+      setTimeout(() => huecos2.forEach((h, i) => { h.classList.remove('mal'); if (!bien[i]) arrastre2.devolver(puestas[i]); }), 1300);
+    }
+  });
+  const juego = sec2.querySelector('[data-juego]');
+  const m2 = montarMision(sec2, {
+    n: 2,
+    paginas: {
+      menu: ['HABLAR CON SÍMBOLOS', 'Selecciona una de las actividades. Comienza con la número 1'],
+      significados: ['SIGNIFICADOS', 'Arrastra las flechas a los cuadros que correspondan. Escucha el significado de las palabras.'],
+      hacia: ['¿HACIA DÓNDE?', 'Usa las flechas para que Lolo llegue a su árbol sin tocar las nubes.'],
+      final: ['DESAFÍO 2', '¡Completaste todas las actividades de este desafío!']
+    },
+    alEntrar: {
+      significados() { huecos2.forEach(h => h.classList.remove('bien', 'mal')); arrastre2.reiniciar(); },
+      hacia() {
+        sec2.querySelector('[data-sig-hacia]').hidden = true;
+        juego.src = M2 + 'html/juego_lolo_nubes.html';
+      }
+    },
+    alSalirPagina() { if (juego.getAttribute('src') !== 'about:blank') juego.src = 'about:blank'; }
+  });
+  window.addEventListener('message', e => {
+    if (e.data && e.data.tipo === 'lolo-llego' && !sec2.hidden) {
+      m2.marcar(2);
+      sec2.querySelector('[data-sig-hacia]').hidden = false;
+      m2.sonar('misiones/mision-01/audio/lo_conseguiste.mp3');
+    }
+    if (e.data && e.data.tipo === 'juego-fallo' && !sec2.hidden) m2.sonar('misiones/mision-01/audio/vuelve_a_intentarlo.mp3');
+  });
+  window.abrirMision2 = m2.abrir;
+
+  // ---------- Misión 3: ¡Acción! ----------
+  const sec3 = document.getElementById('mision3');
+  const M3 = 'misiones/mision-03/';
+  const ALTA = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  const SENAL = { avanza: 'Avanza', gira_izquierda: 'Gira hacia la izquierda', gira_derecha: 'Gira hacia la derecha' };
+  const destinos3 = ['gira_derecha', 'avanza', 'gira_izquierda'];
+  const huecos3 = destinos3.map(k => {
+    const d = document.createElement('div'); d.className = 'm-destino';
+    d.innerHTML = '<button class="decir" type="button" aria-label="Escuchar: ' + SENAL[k] + '">' + ALTA + SENAL[k].toUpperCase() + '</button><div class="hueco" role="button" tabindex="0" aria-label="Cuadro: ' + SENAL[k] + '"></div>';
+    d.querySelector('.decir').addEventListener('click', () => m3.sonar(M3 + 'audio/' + k + '.mp3'));
+    sec3.querySelector('[data-huecos]').appendChild(d); return d;
+  });
+  ['avanza', 'gira_izquierda', 'gira_derecha'].forEach(k => {
+    const casa = document.createElement('div'); casa.className = 'casa-senal';
+    const s = document.createElement('button'); s.type = 'button'; s.className = 'senal'; s.dataset.k = k;
+    s.setAttribute('aria-label', 'Señal: ' + SENAL[k]);
+    s.innerHTML = '<img class="s" src="' + M3 + 'imagenes/senal_' + k + '.png" alt=""><img class="p" src="' + M3 + 'imagenes/pajarito_chico.png" alt="">';
+    casa.appendChild(s); sec3.querySelector('[data-cartas]').appendChild(casa);
+  });
+  const arrastre3 = montarArrastre(sec3.querySelector('.m-senales'), '.senal', huecos3, puestas => {
+    const bien = puestas.map((s, i) => s.dataset.k === destinos3[i]);
+    if (bien.every(Boolean)) {
+      arrastre3.bloquear(true); huecos3.forEach(h => h.classList.add('bien'));
+      m3.sonar('misiones/mision-01/audio/lo_conseguiste.mp3');
+      m3.mensaje('¡Lo conseguiste!', 'Cada señal está en su lugar.', 'ok'); m3.marcar(1);
+    } else {
+      m3.sonar('misiones/mision-01/audio/vuelve_a_intentarlo.mp3');
+      m3.mensaje('¡Volvé a intentarlo!', '', 'mal');
+      huecos3.forEach((h, i) => { if (!bien[i]) h.classList.add('mal'); });
+      setTimeout(() => huecos3.forEach((h, i) => { h.classList.remove('mal'); if (!bien[i]) arrastre3.devolver(puestas[i]); }), 1300);
+    }
+  });
+  const puntos3 = [...sec3.querySelectorAll('.m-punto')];
+  puntos3.forEach(b => b.addEventListener('click', () => {
+    puntos3.forEach(o => o.classList.remove('no'));
+    if (b.dataset.lugar === 'parque') {
+      b.classList.add('ok');
+      m3.sonar('misiones/mision-01/audio/lo_conseguiste.mp3');
+      m3.mensaje('¡Lo conseguiste!', 'Anita llegó al Parque de animales.', 'ok');
+      m3.marcar(2); sec3.querySelector('[data-sig-instr]').hidden = false;
+    } else {
+      void b.offsetWidth; b.classList.add('no');
+      m3.sonar('misiones/mision-01/audio/vuelve_a_intentarlo.mp3');
+      m3.mensaje('¡Volvé a intentarlo!', '', 'mal');
+    }
+  }));
+  sec3.querySelectorAll('.m-tecno').forEach(b => b.addEventListener('click', () => {
+    sec3.querySelectorAll('.m-tecno').forEach(o => o.setAttribute('aria-pressed', o === b ? 'true' : 'false'));
+    m3.marcar(3);
+  }));
+  const m3 = montarMision(sec3, {
+    n: 3,
+    paginas: {
+      menu: ['¡ACCIÓN!', 'Selecciona una de las actividades. Comienza con la número 1'],
+      simbolos: ['SÍMBOLOS', 'Arrastra las flechas al lugar correcto.'],
+      instrucciones: ['INSTRUCCIONES', 'Selecciona el lugar al que llegará Anita siguiendo las instrucciones.'],
+      recorrido: ['RECORRIDO', 'Luego de recorrer tu escuela selecciona una de las tecnologías para representar el recorrido.'],
+      talebot: ['RECORRIDO', 'Mirá el video del TaleBot y elegí el botón que pone en movimiento al robot.'],
+      scratch3: ['RECORRIDO', 'Mirá el video de ScratchJr y elegí el botón que permite comenzar a usar la aplicación.'],
+      final: ['DESAFÍO 3', '¡Completaste todas las actividades de este desafío!']
+    },
+    alEntrar: {
+      simbolos() { huecos3.forEach(h => h.classList.remove('bien', 'mal')); arrastre3.reiniciar(); },
+      instrucciones() { puntos3.forEach(p => p.classList.remove('ok', 'no')); sec3.querySelector('[data-sig-instr]').hidden = true; },
+      talebot() { sec3.querySelectorAll('.tb-op').forEach(o => o.classList.remove('ok', 'no')); sec3.querySelector('[data-sig-tb]').hidden = true; },
+      scratch3() { sec3.querySelectorAll('.sj-op').forEach(o => o.classList.remove('ok', 'no')); sec3.querySelector('[data-sig-sj]').hidden = true; }
+    }
+  });
+  sec3.querySelectorAll('.tb-op:not(.sj-op)').forEach(b => b.addEventListener('click', () => {
+    sec3.querySelectorAll('.tb-op').forEach(o => o.classList.remove('no'));
+    if (b.dataset.ok === '1') {
+      b.classList.add('ok');
+      m3.sonar('misiones/mision-01/audio/lo_conseguiste.mp3');
+      m3.mensaje('¡Lo conseguiste!', 'El botón naranja pone en movimiento al robot.', 'ok');
+      sec3.querySelector('[data-sig-tb]').hidden = false;
+    } else {
+      void b.offsetWidth; b.classList.add('no');
+      m3.sonar('misiones/mision-01/audio/vuelve_a_intentarlo.mp3');
+      m3.mensaje('¡Volvé a intentarlo!', '', 'mal');
+    }
+  }));
+  sec3.querySelector('[data-video-talebot]').addEventListener('play', e => { e.target.muted = silenciado; });
+  const vozSj2 = new Audio('misiones/mision-03/audio/voz_scratchjr_2.mp3');
+  sec3.querySelectorAll('.sj-op').forEach(b => b.addEventListener('click', () => {
+    sec3.querySelectorAll('.sj-op').forEach(o => o.classList.remove('no'));
+    if (b.dataset.ok === '1') {
+      b.classList.add('ok');
+      m3.sonar('misiones/mision-01/audio/lo_conseguiste.mp3');
+      m3.mensaje('¡Lo conseguiste!', 'Con la casita se empieza a usar ScratchJr.', 'ok');
+      sec3.querySelector('[data-sig-sj]').hidden = false;
+      if (!silenciado) setTimeout(() => { vozSj2.currentTime = 0; vozSj2.play().catch(() => {}); }, 1800);
+    } else {
+      void b.offsetWidth; b.classList.add('no');
+      m3.sonar('misiones/mision-01/audio/vuelve_a_intentarlo.mp3');
+      m3.mensaje('¡Volvé a intentarlo!', '', 'mal');
+    }
+  }));
+  sec3.querySelector('[data-video-sj3]').addEventListener('play', e => { e.target.muted = silenciado; vozSj2.pause(); });
+  window.abrirMision3 = m3.abrir;
+
+  // ---------- Misión 4: Escribir en código ----------
+  const sec4 = document.getElementById('mision4');
+  const M4 = 'misiones/mision-04/';
+  const ESC = { bruno: 'Tomás le pide lugar a Bruno', buho: 'Tomás le pide lugar al búho', caparazon: 'Tomás descubre que su caparazón es su hogar' };
+  const ORDEN4 = ['bruno', 'buho', 'caparazon'];
+  ['caparazon', 'bruno', 'buho'].forEach(k => {
+    const casa = document.createElement('div'); casa.className = 'casa-escena';
+    const e = document.createElement('button'); e.type = 'button'; e.className = 'escena'; e.dataset.k = k;
+    e.setAttribute('aria-label', ESC[k]);
+    e.innerHTML = '<img src="' + M4 + 'imagenes/escena_' + k + '.jpg" alt="">';
+    casa.appendChild(e); sec4.querySelector('[data-cartas]').appendChild(casa);
+  });
+  const huecos4 = [1, 2, 3].map(n => {
+    const d = document.createElement('div'); d.className = 'm-casillero';
+    d.innerHTML = '<div class="hueco" role="button" tabindex="0" aria-label="Casillero ' + n + '"></div><span class="num-morado">' + n + '</span>';
+    sec4.querySelector('[data-huecos]').appendChild(d); return d;
+  });
+  const arrastre4 = montarArrastre(sec4.querySelector('.m-escenas'), '.escena', huecos4, puestas => {
+    const bien = puestas.map((e, i) => e.dataset.k === ORDEN4[i]);
+    if (bien.every(Boolean)) {
+      arrastre4.bloquear(true); huecos4.forEach(h => h.classList.add('bien'));
+      m4.sonar('misiones/mision-04/audio/pancho_lo_conseguiste.mp3');
+      m4.mensaje('¡Lo conseguiste!', 'Así ocurrió el cuento de Tomás.', 'ok'); m4.marcar(2);
+    } else {
+      m4.sonar('misiones/mision-04/audio/pancho_vuelve_a_intentarlo.mp3');
+      m4.mensaje('¡Volvé a intentarlo!', 'Pensá qué pasó primero en el cuento.', 'mal');
+      huecos4.forEach((h, i) => { if (!bien[i]) h.classList.add('mal'); });
+      setTimeout(() => huecos4.forEach((h, i) => { h.classList.remove('mal'); if (!bien[i]) arrastre4.devolver(puestas[i]); }), 1300);
+    }
+  });
+  const jLlegar = sec4.querySelector('[data-juego-llegar]');
+  const jCuenta = sec4.querySelector('[data-juego-cuenta]');
+  sec4.querySelector('[data-video-cuento]').addEventListener('ended', () => m4.marcar(1));
+  sec4.querySelector('[data-video-cuento]').addEventListener('play', e => { e.target.muted = silenciado; });
+  sec4.querySelectorAll('.m-tecno').forEach(b => b.addEventListener('click', () => {
+    sec4.querySelectorAll('.m-tecno').forEach(o => o.setAttribute('aria-pressed', o === b ? 'true' : 'false'));
+    m4.marcar(5);
+  }));
+  sec4.querySelector('[data-video-scratch]').addEventListener('play', e => { e.target.muted = silenciado; });
+  let pag4 = 'menu';
+  const m4 = montarMision(sec4, {
+    n: 4,
+    festejo: 'misiones/mision-04/imagenes/festejo_pancho_salta.webp',
+    paginas: {
+      menu: ['ESCRIBIR EN CÓDIGO', 'Selecciona una de las actividades. Comienza con la número 1'],
+      cuento: ['PAUSA PARA UN CUENTO', 'Escucha el cuento y cuenta a tu clase cuál es tu personaje favorito.'],
+      ocurrio: ['¿CÓMO OCURRIÓ?', 'Arrastra las imágenes a los casilleros correspondientes para que queden ordenadas.'],
+      llegar: ['¿CÓMO LLEGAR?', 'Mueve el caracol presionando las flechas hasta que llegue a la cucha de Bruno.'],
+      cuenta: ['TOMÁS TE CUENTA', 'Selecciona el código que permite a Tomás reconstruir el cuento.'],
+      animado: ['CUENTO ANIMADO', 'Selecciona una de las herramientas para reconstruir el cuento.'],
+      contalebot: ['CUENTO ANIMADO', 'con TaleBot'],
+      conscratch: ['CUENTO ANIMADO', 'con ScratchJr'],
+      final: ['DESAFÍO 4', '¡Completaste todas las actividades de este desafío!']
+    },
+    alEntrar: {
+      menu() { pag4 = 'menu'; },
+      cuento() { pag4 = 'cuento'; },
+      ocurrio() { pag4 = 'ocurrio'; huecos4.forEach(h => h.classList.remove('bien', 'mal')); arrastre4.reiniciar(); },
+      llegar() { pag4 = 'llegar'; sec4.querySelector('[data-sig-llegar]').hidden = true; jLlegar.src = M4 + 'html/juego_tomas_bruno.html'; },
+      cuenta() { pag4 = 'cuenta'; sec4.querySelector('[data-sig-cuenta]').hidden = true; jCuenta.src = M4 + 'html/juego_codigos.html'; },
+      animado() { pag4 = 'animado'; }
+    },
+    alSalirPagina() {
+      [jLlegar, jCuenta].forEach(f => { if (f.getAttribute('src') !== 'about:blank') f.src = 'about:blank'; });
+      sec4.querySelectorAll('video').forEach(v => v.pause());
+    }
+  });
+  window.addEventListener('message', e => {
+    if (e.data && e.data.tipo === 'juego-fallo' && !sec4.hidden) { m4.sonar('misiones/mision-04/audio/pancho_vuelve_a_intentarlo.mp3'); return; }
+    if (!e.data || e.data.tipo !== 'juego-ganado' || sec4.hidden) return;
+    if (pag4 === 'llegar') { m4.marcar(3); sec4.querySelector('[data-sig-llegar]').hidden = false; }
+    if (pag4 === 'cuenta') { m4.marcar(4); sec4.querySelector('[data-sig-cuenta]').hidden = false; }
+    m4.sonar('misiones/mision-04/audio/pancho_lo_conseguiste.mp3');
+  });
+  window.abrirMision4 = m4.abrir;
+  // ---------- Misión 5: Una y otra vez ----------
+  const sec5 = document.getElementById('mision5');
+  const sigCuantas = sec5.querySelector('[data-sig-cuantas]');
+  sec5.querySelectorAll('.num-op').forEach(b => b.addEventListener('click', () => {
+    if (!sigCuantas.hidden) return;
+    sec5.querySelectorAll('.num-op').forEach(o => o.classList.remove('no'));
+    if (b.dataset.ok === '1') {
+      b.classList.add('ok');
+      m5.sonar('misiones/mision-04/audio/pancho_lo_conseguiste.mp3');
+      m5.mensaje('¡Lo conseguiste!', 'La secuencia se repite 3 veces.', 'ok');
+      m5.marcar(2); sigCuantas.hidden = false;
+    } else {
+      void b.offsetWidth; b.classList.add('no');
+      m5.sonar('misiones/mision-04/audio/pancho_vuelve_a_intentarlo.mp3');
+      m5.mensaje('¡Volvé a intentarlo!', 'Mirá otra vez el baile de Bonachón.', 'mal');
+    }
+  }));
+  sec5.querySelectorAll('video').forEach(v => v.addEventListener('play', e => { e.target.muted = silenciado; }));
+  // Música bajita para acompañar el baile de Bonachón
+  const musicaBaile = new Audio('misiones/mision-05/audio/musica_baile.mp3');
+  musicaBaile.loop = true; musicaBaile.volume = 0.12;
+  const bailar = () => { if (!silenciado) musicaBaile.play().catch(() => {}); };
+  btnSonido.addEventListener('click', () => {
+    if (sec5.hidden) return;
+    if (silenciado) musicaBaile.pause();
+    else if (['baila', 'cuantas'].includes(sec5.querySelector('.m-pag:not([hidden])').dataset.p)) bailar();
+  });
+  const m5 = montarMision(sec5, {
+    n: 5,
+    festejo: 'misiones/mision-04/imagenes/festejo_pancho_salta.webp',
+    paginas: {
+      menu: ['UNA Y OTRA VEZ', 'Selecciona una de las actividades. Comienza con la número 1'],
+      crea: ['CREA TU PERSONAJE', 'Observa cómo se crea un nuevo personaje y presiona el botón <b>¡BAILA!</b> para continuar.'],
+      baila: ['CREA TU PERSONAJE', 'Baila con Bonachón y cuando sepas qué movimientos se repiten presiona <b>CONTINUAR</b>.'],
+      cuantas: ['SECUENCIAS REPETIDAS', 'Mira el baile de Bonachón y selecciona la respuesta correcta.'],
+      herramienta: ['SECUENCIAS REPETIDAS', 'Crea tu personaje y dale movimiento'],
+      contalebot: ['SECUENCIAS REPETIDAS', 'con TaleBot'],
+      conscratch: ['SECUENCIAS REPETIDAS', 'con ScratchJr'],
+      final: ['DESAFÍO 5', '¡Completaste todas las actividades de este desafío!']
+    },
+    alEntrar: {
+      crea() { const g = sec5.querySelector('[data-anim-crea]'); g.src = 'misiones/mision-05/imagenes/crea_personaje.gif#' + Date.now(); },
+      baila() { m5.marcar(1); bailar(); },
+      cuantas() { bailar(); sigCuantas.hidden = true; sec5.querySelectorAll('.num-op').forEach(o => o.classList.remove('ok', 'no')); }
+    },
+    alSalirPagina() { sec5.querySelectorAll('video').forEach(v => v.pause()); musicaBaile.pause(); musicaBaile.currentTime = 0; }
+  });
+  window.abrirMision5 = m5.abrir;
+  // Juegos con tamaño fijo: se escalan para entrar en la pantalla
+  const ro = new ResizeObserver(entradas => entradas.forEach(en => {
+    const el = en.target; el.style.setProperty('--s', el.clientWidth / parseFloat(getComputedStyle(el).getPropertyValue('--w')));
+  }));
+  document.querySelectorAll('.m-escala').forEach(el => ro.observe(el));
+
+  // Logo: bien visible al comienzo, después casi desapercibido
+  setTimeout(() => document.getElementById('logo-portada').classList.remove('destacado'), 3500);
+
+  // Movimiento reducido: fondo quieto
+  const quieto = window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (quieto.matches) { fondo.removeAttribute('autoplay'); fondo.pause(); }
+
+  // Cielo con estrellitas
+  const cv = document.getElementById('estrellas');
+  const ctx = cv.getContext('2d');
+  let puntos = [];
+  function armar() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const n = Math.round(innerWidth * innerHeight / 9000);
+    puntos = Array.from({ length: n }, () => ({
+      x: Math.random() * innerWidth, y: Math.random() * innerHeight,
+      r: Math.random() * 4 + 1.5, v: Math.random() * .25 + .05, f: Math.random() * 6.28
+    }));
+  }
+  function dibujar(t) {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    for (const p of puntos) {
+      if (!quieto.matches) { p.y -= p.v; if (p.y < -10) { p.y = innerHeight + 10; p.x = Math.random() * innerWidth; } }
+      const a = .18 + .14 * Math.sin(t / 900 + p.f);
+      ctx.fillStyle = `rgba(200,170,240,${a})`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill();
+    }
+    requestAnimationFrame(dibujar);
+  }
+  armar(); addEventListener('resize', armar); requestAnimationFrame(dibujar);
+})();
+</script>
+
+</body></html>
